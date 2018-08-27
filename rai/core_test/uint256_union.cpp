@@ -69,31 +69,31 @@ struct test_punct : std::moneypunct<char>
 
 TEST (uint128_union, balance_format)
 {
-	ASSERT_EQ ("0", rai::amount (rai::uint128_t ("0")).format_balance (rai::Mxrb_ratio, 0, false));
-	ASSERT_EQ ("0", rai::amount (rai::uint128_t ("0")).format_balance (rai::Mxrb_ratio, 2, true));
-	ASSERT_EQ ("340,282,366", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).format_balance (rai::Mxrb_ratio, 0, true));
-	ASSERT_EQ ("340,282,366.920938463463374607431768211455", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).format_balance (rai::Mxrb_ratio, 64, true));
+	ASSERT_EQ ("0", rai::amount (rai::uint128_t ("0")).format_balance (rai::Mchr_ratio, 0, false));
+	ASSERT_EQ ("0", rai::amount (rai::uint128_t ("0")).format_balance (rai::Mchr_ratio, 2, true));
+	ASSERT_EQ ("340,282,366", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).format_balance (rai::Mchr_ratio, 0, true));
+	ASSERT_EQ ("340,282,366.920938463463374607431768211455", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).format_balance (rai::Mchr_ratio, 64, true));
 	ASSERT_EQ ("340,282,366,920,938,463,463,374,607,431,768,211,455", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).format_balance (1, 4, true));
-	ASSERT_EQ ("340,282,366", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (rai::Mxrb_ratio, 0, true));
-	ASSERT_EQ ("340,282,366.920938463463374607431768211454", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (rai::Mxrb_ratio, 64, true));
+	ASSERT_EQ ("340,282,366", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (rai::Mchr_ratio, 0, true));
+	ASSERT_EQ ("340,282,366.920938463463374607431768211454", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (rai::Mchr_ratio, 64, true));
 	ASSERT_EQ ("340282366920938463463374607431768211454", rai::amount (rai::uint128_t ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (1, 4, false));
-	ASSERT_EQ ("170,141,183", rai::amount (rai::uint128_t ("0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (rai::Mxrb_ratio, 0, true));
-	ASSERT_EQ ("170,141,183.460469231731687303715884105726", rai::amount (rai::uint128_t ("0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (rai::Mxrb_ratio, 64, true));
+	ASSERT_EQ ("170,141,183", rai::amount (rai::uint128_t ("0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (rai::Mchr_ratio, 0, true));
+	ASSERT_EQ ("170,141,183.460469231731687303715884105726", rai::amount (rai::uint128_t ("0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (rai::Mchr_ratio, 64, true));
 	ASSERT_EQ ("170141183460469231731687303715884105726", rai::amount (rai::uint128_t ("0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")).format_balance (1, 4, false));
-	ASSERT_EQ ("1", rai::amount (rai::uint128_t ("1000000000000000000000000000000")).format_balance (rai::Mxrb_ratio, 2, true));
-	ASSERT_EQ ("1.2", rai::amount (rai::uint128_t ("1200000000000000000000000000000")).format_balance (rai::Mxrb_ratio, 2, true));
-	ASSERT_EQ ("1.23", rai::amount (rai::uint128_t ("1230000000000000000000000000000")).format_balance (rai::Mxrb_ratio, 2, true));
-	ASSERT_EQ ("1.2", rai::amount (rai::uint128_t ("1230000000000000000000000000000")).format_balance (rai::Mxrb_ratio, 1, true));
-	ASSERT_EQ ("1", rai::amount (rai::uint128_t ("1230000000000000000000000000000")).format_balance (rai::Mxrb_ratio, 0, true));
-	ASSERT_EQ ("< 0.01", rai::amount (rai::xrb_ratio * 10).format_balance (rai::Mxrb_ratio, 2, true));
-	ASSERT_EQ ("< 0.1", rai::amount (rai::xrb_ratio * 10).format_balance (rai::Mxrb_ratio, 1, true));
-	ASSERT_EQ ("< 1", rai::amount (rai::xrb_ratio * 10).format_balance (rai::Mxrb_ratio, 0, true));
-	ASSERT_EQ ("< 0.01", rai::amount (rai::xrb_ratio * 9999).format_balance (rai::Mxrb_ratio, 2, true));
-	ASSERT_EQ ("0.01", rai::amount (rai::xrb_ratio * 10000).format_balance (rai::Mxrb_ratio, 2, true));
-	ASSERT_EQ ("123456789", rai::amount (rai::Mxrb_ratio * 123456789).format_balance (rai::Mxrb_ratio, 2, false));
-	ASSERT_EQ ("123,456,789", rai::amount (rai::Mxrb_ratio * 123456789).format_balance (rai::Mxrb_ratio, 2, true));
-	ASSERT_EQ ("123,456,789.12", rai::amount (rai::Mxrb_ratio * 123456789 + rai::kxrb_ratio * 123).format_balance (rai::Mxrb_ratio, 2, true));
-	ASSERT_EQ ("12-3456-789+123", rai::amount (rai::Mxrb_ratio * 123456789 + rai::kxrb_ratio * 123).format_balance (rai::Mxrb_ratio, 4, true, std::locale (std::cout.getloc (), new test_punct)));
+	ASSERT_EQ ("1", rai::amount (rai::uint128_t ("1000000000000000000000000000000")).format_balance (rai::Mchr_ratio, 2, true));
+	ASSERT_EQ ("1.2", rai::amount (rai::uint128_t ("1200000000000000000000000000000")).format_balance (rai::Mchr_ratio, 2, true));
+	ASSERT_EQ ("1.23", rai::amount (rai::uint128_t ("1230000000000000000000000000000")).format_balance (rai::Mchr_ratio, 2, true));
+	ASSERT_EQ ("1.2", rai::amount (rai::uint128_t ("1230000000000000000000000000000")).format_balance (rai::Mchr_ratio, 1, true));
+	ASSERT_EQ ("1", rai::amount (rai::uint128_t ("1230000000000000000000000000000")).format_balance (rai::Mchr_ratio, 0, true));
+	ASSERT_EQ ("< 0.01", rai::amount (rai::chr_ratio * 10).format_balance (rai::Mchr_ratio, 2, true));
+	ASSERT_EQ ("< 0.1", rai::amount (rai::chr_ratio * 10).format_balance (rai::Mchr_ratio, 1, true));
+	ASSERT_EQ ("< 1", rai::amount (rai::chr_ratio * 10).format_balance (rai::Mchr_ratio, 0, true));
+	ASSERT_EQ ("< 0.01", rai::amount (rai::chr_ratio * 9999).format_balance (rai::Mchr_ratio, 2, true));
+	ASSERT_EQ ("0.01", rai::amount (rai::chr_ratio * 10000).format_balance (rai::Mchr_ratio, 2, true));
+	ASSERT_EQ ("123456789", rai::amount (rai::Mchr_ratio * 123456789).format_balance (rai::Mchr_ratio, 2, false));
+	ASSERT_EQ ("123,456,789", rai::amount (rai::Mchr_ratio * 123456789).format_balance (rai::Mchr_ratio, 2, true));
+	ASSERT_EQ ("123,456,789.12", rai::amount (rai::Mchr_ratio * 123456789 + rai::kchr_ratio * 123).format_balance (rai::Mchr_ratio, 2, true));
+	ASSERT_EQ ("12-3456-789+123", rai::amount (rai::Mchr_ratio * 123456789 + rai::kchr_ratio * 123).format_balance (rai::Mchr_ratio, 4, true, std::locale (std::cout.getloc (), new test_punct)));
 }
 
 TEST (unions, identity)
@@ -307,7 +307,7 @@ TEST (uint256_union, big_endian_union_function)
 TEST (uint256_union, decode_nano_variant)
 {
 	rai::uint256_union key;
-	ASSERT_FALSE (key.decode_account ("xrb_1111111111111111111111111111111111111111111111111111hifc8npp"));
+	ASSERT_FALSE (key.decode_account ("chr_1111111111111111111111111111111111111111111111111111hifc8npp"));
 	ASSERT_FALSE (key.decode_account ("nano_1111111111111111111111111111111111111111111111111111hifc8npp"));
 }
 
@@ -316,19 +316,19 @@ TEST (uint256_union, decode_account_variations)
 	for (int i = 0; i < 100; i++)
 	{
 		rai::raw_key key;
-		xrb_generate_random (key.data.bytes.data ());
+		chr_generate_random (key.data.bytes.data ());
 		rai::uint256_union pub;
-		xrb_key_account (key.data.bytes.data (), pub.bytes.data ());
+		chr_key_account (key.data.bytes.data (), pub.bytes.data ());
 
 		char account[65] = { 0 };
-		xrb_uint256_to_address (pub.bytes.data (), account);
+		chr_uint256_to_address (pub.bytes.data (), account);
 
-		// Replace first digit after xrb_ with '0'..'9', make sure only one of them is valid
+		// Replace first digit after chr_ with '0'..'9', make sure only one of them is valid
 		int errors = 0;
 		for (int variation = 0; variation < 10; variation++)
 		{
 			account[4] = static_cast<char> (variation + 48);
-			errors += xrb_valid_address (account);
+			errors += chr_valid_address (account);
 		}
 
 		ASSERT_EQ (errors, 9);

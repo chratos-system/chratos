@@ -899,8 +899,8 @@ rai::node_config::node_config (uint16_t peering_port_a, rai::logging const & log
 peering_port (peering_port_a),
 logging (logging_a),
 bootstrap_fraction_numerator (1),
-receive_minimum (rai::xrb_ratio),
-online_weight_minimum (60000 * rai::Gxrb_ratio),
+receive_minimum (rai::chr_ratio),
+online_weight_minimum (60000 * rai::Gchr_ratio),
 online_weight_quorum (50),
 password_fanout (1024),
 io_threads (std::max<unsigned> (4, std::thread::hardware_concurrency ())),
@@ -1030,13 +1030,13 @@ bool rai::node_config::upgrade_json (unsigned version, boost::property_tree::ptr
 		}
 		case 3:
 			tree_a.erase ("receive_minimum");
-			tree_a.put ("receive_minimum", rai::xrb_ratio.convert_to<std::string> ());
+			tree_a.put ("receive_minimum", rai::chr_ratio.convert_to<std::string> ());
 			tree_a.erase ("version");
 			tree_a.put ("version", "4");
 			result = true;
 		case 4:
 			tree_a.erase ("receive_minimum");
-			tree_a.put ("receive_minimum", rai::xrb_ratio.convert_to<std::string> ());
+			tree_a.put ("receive_minimum", rai::chr_ratio.convert_to<std::string> ());
 			tree_a.erase ("version");
 			tree_a.put ("version", "5");
 			result = true;
@@ -1891,7 +1891,7 @@ stats (config.stat_config)
 					{
 						break;
 					}
-					BOOST_LOG (log) << "Using bootstrap rep weight: " << account.to_account () << " -> " << weight.format_balance (Mxrb_ratio, 0, true) << " XRB";
+					BOOST_LOG (log) << "Using bootstrap rep weight: " << account.to_account () << " -> " << weight.format_balance (Mchr_ratio, 0, true) << " XRB";
 					ledger.bootstrap_weights[account] = weight.number ();
 				}
 			}
@@ -2466,13 +2466,13 @@ void rai::node::backup_wallet ()
 
 int rai::node::price (rai::uint128_t const & balance_a, int amount_a)
 {
-	assert (balance_a >= amount_a * rai::Gxrb_ratio);
+	assert (balance_a >= amount_a * rai::Gchr_ratio);
 	auto balance_l (balance_a);
 	double result (0.0);
 	for (auto i (0); i < amount_a; ++i)
 	{
-		balance_l -= rai::Gxrb_ratio;
-		auto balance_scaled ((balance_l / rai::Mxrb_ratio).convert_to<double> ());
+		balance_l -= rai::Gchr_ratio;
+		auto balance_scaled ((balance_l / rai::Mchr_ratio).convert_to<double> ());
 		auto units (balance_scaled / 1000.0);
 		auto unit_price (((free_cutoff - units) / free_cutoff) * price_max);
 		result += std::min (std::max (0.0, unit_price), price_max);

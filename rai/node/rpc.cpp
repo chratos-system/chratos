@@ -3742,11 +3742,11 @@ void rai::rpc_handler::process_request ()
 			}
 			else if (action == "krai_from_raw")
 			{
-				mrai_from_raw (rai::kxrb_ratio);
+				mrai_from_raw (rai::kchr_ratio);
 			}
 			else if (action == "krai_to_raw")
 			{
-				mrai_to_raw (rai::kxrb_ratio);
+				mrai_to_raw (rai::kchr_ratio);
 			}
 			else if (action == "ledger")
 			{
@@ -3806,11 +3806,11 @@ void rai::rpc_handler::process_request ()
 			}
 			else if (action == "rai_from_raw")
 			{
-				mrai_from_raw (rai::xrb_ratio);
+				mrai_from_raw (rai::chr_ratio);
 			}
 			else if (action == "rai_to_raw")
 			{
-				mrai_to_raw (rai::xrb_ratio);
+				mrai_to_raw (rai::chr_ratio);
 			}
 			else if (action == "receive")
 			{

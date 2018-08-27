@@ -949,7 +949,7 @@ std::string rai_qt::status::color ()
 }
 
 rai_qt::wallet::wallet (QApplication & application_a, rai_qt::eventloop_processor & processor_a, rai::node & node_a, std::shared_ptr<rai::wallet> wallet_a, rai::account & account_a) :
-rendering_ratio (rai::Mxrb_ratio),
+rendering_ratio (rai::Mchr_ratio),
 node (node_a),
 wallet_m (wallet_a),
 account (account_a),
@@ -1394,13 +1394,13 @@ std::string rai_qt::wallet::format_balance (rai::uint128_t const & balance) cons
 {
 	auto balance_str = rai::amount (balance).format_balance (rendering_ratio, 0, false);
 	auto unit = std::string ("XRB");
-	if (rendering_ratio == rai::kxrb_ratio)
+	if (rendering_ratio == rai::kchr_ratio)
 	{
-		unit = std::string ("kxrb");
+		unit = std::string ("kchr");
 	}
-	else if (rendering_ratio == rai::xrb_ratio)
+	else if (rendering_ratio == rai::chr_ratio)
 	{
-		unit = std::string ("xrb");
+		unit = std::string ("chr");
 	}
 	return balance_str + " " + unit;
 }
@@ -1681,9 +1681,9 @@ scale_window (new QWidget),
 scale_layout (new QHBoxLayout),
 scale_label (new QLabel ("Scale:")),
 ratio_group (new QButtonGroup),
-mrai (new QRadioButton ("Mxrb")),
-krai (new QRadioButton ("kxrb")),
-rai (new QRadioButton ("xrb")),
+mrai (new QRadioButton ("Mchr")),
+krai (new QRadioButton ("kchr")),
+rai (new QRadioButton ("chr")),
 back (new QPushButton ("Back")),
 ledger_window (new QWidget),
 ledger_layout (new QVBoxLayout),
@@ -1767,19 +1767,19 @@ wallet (wallet_a)
 	QObject::connect (mrai, &QRadioButton::toggled, [this]() {
 		if (mrai->isChecked ())
 		{
-			this->wallet.change_rendering_ratio (rai::Mxrb_ratio);
+			this->wallet.change_rendering_ratio (rai::Mchr_ratio);
 		}
 	});
 	QObject::connect (krai, &QRadioButton::toggled, [this]() {
 		if (krai->isChecked ())
 		{
-			this->wallet.change_rendering_ratio (rai::kxrb_ratio);
+			this->wallet.change_rendering_ratio (rai::kchr_ratio);
 		}
 	});
 	QObject::connect (rai, &QRadioButton::toggled, [this]() {
 		if (rai->isChecked ())
 		{
-			this->wallet.change_rendering_ratio (rai::xrb_ratio);
+			this->wallet.change_rendering_ratio (rai::chr_ratio);
 		}
 	});
 	mrai->click ();

@@ -690,7 +690,7 @@ TEST (block_store, upgrade_v4_v5)
 		rai::account_info info;
 		store.account_get (transaction, rai::test_genesis_key.pub, info);
 		rai::keypair key0;
-		rai::send_block block0 (info.head, key0.pub, rai::genesis_amount - rai::Gxrb_ratio, rai::test_genesis_key.prv, rai::test_genesis_key.pub, 0);
+		rai::send_block block0 (info.head, key0.pub, rai::genesis_amount - rai::Gchr_ratio, rai::test_genesis_key.prv, rai::test_genesis_key.pub, 0);
 		ASSERT_EQ (rai::process_result::progress, ledger.process (transaction, block0).code);
 		hash = block0.hash ();
 		auto original (store.block_get (transaction, info.head));
@@ -909,7 +909,7 @@ TEST (block_store, upgrade_v9_v10)
 		hash = info.head;
 		for (auto i (1); i < 32; ++i) // Making 31 send blocks (+ 1 open = 32 total)
 		{
-			balance = balance - rai::Gxrb_ratio;
+			balance = balance - rai::Gchr_ratio;
 			rai::send_block block0 (hash, key0.pub, balance, rai::test_genesis_key.prv, rai::test_genesis_key.pub, 0);
 			ASSERT_EQ (rai::process_result::progress, ledger.process (transaction, block0).code);
 			hash = block0.hash ();
@@ -930,7 +930,7 @@ TEST (block_store, upgrade_v9_v10)
 	rai::block_info block_info;
 	store.block_info_get (transaction, hash, block_info);
 	ASSERT_EQ (block_info.account, rai::test_genesis_key.pub);
-	ASSERT_EQ (block_info.balance.number (), rai::genesis_amount - rai::Gxrb_ratio * 31);
+	ASSERT_EQ (block_info.balance.number (), rai::genesis_amount - rai::Gchr_ratio * 31);
 }
 
 TEST (block_store, state_block)
