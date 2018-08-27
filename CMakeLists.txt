@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.4)
-project (rai)
+project (chratos)
 
 set (CPACK_PACKAGE_VERSION_MAJOR "16")
 set (CPACK_PACKAGE_VERSION_MINOR "0")
@@ -7,7 +7,7 @@ set (CPACK_PACKAGE_VERSION_PATCH "0")
 if (DEFINED GIT_COMMIT)
 	set (CPACK_PACKAGE_VERSION_PATCH "GIT-${GIT_COMMIT}")
 endif ()
-set (CPACK_PACKAGE_VENDOR "Nano Currency")
+set (CPACK_PACKAGE_VENDOR "Chratos")
 
 set(CMAKE_INSTALL_RPATH "@executable_path/../Frameworks")
 # Create all libraries and executables in the root binary dir
@@ -21,8 +21,8 @@ option(RAIBLOCKS_ASAN_INT "Enable ASan+UBSan+Integer overflow" OFF)
 option(RAIBLOCKS_ASAN "Enable ASan+UBSan" OFF)
 option(RAIBLOCKS_SIMD_OPTIMIZATIONS "Enable CPU-specific SIMD optimizations (SSE/AVX or NEON, e.g.)" OFF)
 
-SET (ACTIVE_NETWORK rai_live_network CACHE STRING "Selects which network parameters are used")
-set_property (CACHE ACTIVE_NETWORK PROPERTY STRINGS rai_test_network rai_beta_network rai_live_network)
+SET (ACTIVE_NETWORK chratos_live_network CACHE STRING "Selects which network parameters are used")
+set_property (CACHE ACTIVE_NETWORK PROPERTY STRINGS chratos_test_network chratos_beta_network chratos_live_network)
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
@@ -227,10 +227,10 @@ add_library (blake2
 
 target_compile_definitions(blake2 PRIVATE -D__SSE2__)
 
-add_subdirectory(rai/secure)
-add_subdirectory(rai/lib)
-add_subdirectory(rai/node)
-add_subdirectory(rai/rai_node)
+add_subdirectory(chratos/secure)
+add_subdirectory(chratos/lib)
+add_subdirectory(chratos/node)
+add_subdirectory(chratos/chratos_node)
 
 if (RAIBLOCKS_TEST)
     if(WIN32)
@@ -252,8 +252,8 @@ if (RAIBLOCKS_TEST)
 	set_target_properties(gtest PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
 		"${CMAKE_SOURCE_DIR}/gtest/include")
 
-	add_subdirectory(rai/core_test)
-	add_subdirectory(rai/slow_test)
+	add_subdirectory(chratos/core_test)
+	add_subdirectory(chratos/slow_test)
 endif ()
 
 if (RAIBLOCKS_GUI)
@@ -266,11 +266,11 @@ if (RAIBLOCKS_GUI)
 	find_package (Qt5 COMPONENTS Core Gui Widgets Test ${PLATFORM_QT_PACKAGES})
 
 	add_library (qt
-		rai/qt/qt.cpp
-		rai/qt/qt.hpp)
+		chratos/qt/qt.cpp
+		chratos/qt/qt.hpp)
 
 	target_link_libraries(qt
-		secure rai_lib node libminiupnpc-static Qt5::Gui Qt5::Widgets)
+		secure chratos_lib node libminiupnpc-static Qt5::Gui Qt5::Widgets)
 
 	target_compile_definitions(qt
 		PRIVATE
@@ -284,13 +284,13 @@ if (RAIBLOCKS_GUI)
 	endif ()
 
 	if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-		set (PLATFORM_WALLET_SOURCE rai/rai_wallet/plat/default/icon.cpp)
+		set (PLATFORM_WALLET_SOURCE chratos/chratos_wallet/plat/default/icon.cpp)
 	elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-		set (PLATFORM_WALLET_SOURCE rai/rai_wallet/plat/windows/icon.cpp RaiBlocks.rc)
+		set (PLATFORM_WALLET_SOURCE chratos/chratos_wallet/plat/windows/icon.cpp RaiBlocks.rc)
 	elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-		set (PLATFORM_WALLET_SOURCE rai/rai_wallet/plat/default/icon.cpp)
+		set (PLATFORM_WALLET_SOURCE chratos/chratos_wallet/plat/default/icon.cpp)
 	elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-		set (PLATFORM_WALLET_SOURCE rai/rai_wallet/plat/default/icon.cpp)
+		set (PLATFORM_WALLET_SOURCE chratos/chratos_wallet/plat/default/icon.cpp)
 	else ()
 		error ("Unknown platform: ${CMAKE_SYSTEM_NAME}")
 	endif ()
@@ -299,8 +299,8 @@ if (RAIBLOCKS_GUI)
 
 	add_executable (nano_wallet ${PLATFORM_GUI_TARGET_PROPERTIES}
 		${PLATFORM_WALLET_SOURCE}
-		rai/rai_wallet/entry.cpp
-		rai/rai_wallet/icon.hpp
+		chratos/chratos_wallet/entry.cpp
+		chratos/chratos_wallet/icon.hpp
 		${RES})
 
 	target_link_libraries (nano_wallet
@@ -312,7 +312,7 @@ if (RAIBLOCKS_GUI)
 	endif()
 
 	add_executable (qt_system
-		rai/qt_system/entry.cpp)
+		chratos/qt_system/entry.cpp)
 
 	target_link_libraries (qt_system qt node Qt5::Gui Qt5::Widgets)
 
@@ -320,8 +320,8 @@ if (RAIBLOCKS_GUI)
 
 	if (RAIBLOCKS_TEST)
 		add_executable (qt_test
-			rai/qt_test/entry.cpp
-			rai/qt_test/qt.cpp)
+			chratos/qt_test/entry.cpp
+			chratos/qt_test/qt.cpp)
 
 		target_link_libraries(qt_test gtest gtest_main qt Qt5::Test)
 
@@ -329,16 +329,16 @@ if (RAIBLOCKS_GUI)
 	endif ()
 
 	if (APPLE)
-		install (TARGETS nano_wallet DESTINATION Nano.app/Contents/MacOS)
-		install (FILES Info.plist DESTINATION Nano.app/Contents)
-		install (FILES qt.conf DESTINATION Nano.app/Contents/Resources)
-		install (DIRECTORY ${Qt5_DIR}/../../QtCore.framework DESTINATION Nano.app/Contents/Frameworks)
-		install (DIRECTORY ${Qt5_DIR}/../../QtGui.framework DESTINATION Nano.app/Contents/Frameworks)
-		install (DIRECTORY ${Qt5_DIR}/../../QtPrintSupport.framework DESTINATION Nano.app/Contents/Frameworks)
-		install (DIRECTORY ${Qt5_DIR}/../../QtTest.framework DESTINATION Nano.app/Contents/Frameworks)
-		install (DIRECTORY ${Qt5_DIR}/../../QtWidgets.framework DESTINATION Nano.app/Contents/Frameworks)
-		install (FILES "${Qt5_DIR}/../../../plugins/platforms/libqcocoa.dylib" DESTINATION Nano.app/Contents/PlugIns/platforms)
-		install (FILES RaiBlocks.icns DESTINATION Nano.app/Contents/Resources)
+		install (TARGETS nano_wallet DESTINATION Chratos.app/Contents/MacOS)
+		install (FILES Info.plist DESTINATION Chratos.app/Contents)
+		install (FILES qt.conf DESTINATION Chratos.app/Contents/Resources)
+		install (DIRECTORY ${Qt5_DIR}/../../QtCore.framework DESTINATION Chratos.app/Contents/Frameworks)
+		install (DIRECTORY ${Qt5_DIR}/../../QtGui.framework DESTINATION Chratos.app/Contents/Frameworks)
+		install (DIRECTORY ${Qt5_DIR}/../../QtPrintSupport.framework DESTINATION Chratos.app/Contents/Frameworks)
+		install (DIRECTORY ${Qt5_DIR}/../../QtTest.framework DESTINATION Chratos.app/Contents/Frameworks)
+		install (DIRECTORY ${Qt5_DIR}/../../QtWidgets.framework DESTINATION Chratos.app/Contents/Frameworks)
+		install (FILES "${Qt5_DIR}/../../../plugins/platforms/libqcocoa.dylib" DESTINATION Chratos.app/Contents/PlugIns/platforms)
+		install (FILES RaiBlocks.icns DESTINATION Chratos.app/Contents/Resources)
 	elseif (WIN32)
 		if ("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 			set (WIN_REDIST vc_redist.x64.exe)
@@ -347,12 +347,12 @@ if (RAIBLOCKS_GUI)
 		endif ()
 		set (CPACK_NSIS_EXTRA_INSTALL_COMMANDS "ExecWait '\\\"$INSTDIR\\\\${WIN_REDIST}\\\" /quiet /norestart'")
 		set (CPACK_NSIS_MUI_ICON ${CMAKE_SOURCE_DIR}/RaiBlocks.ico)
-		set (CPACK_NSIS_DISPLAY_NAME "Nano")
-		set (CPACK_PACKAGE_NAME "Nano_Installer")
-		set (CPACK_NSIS_PACKAGE_NAME "Nano ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
-		set (CPACK_NSIS_URL_INFO_ABOUT "https://nano.org")
-		set (CPACK_NSIS_CONTACT "info@nano.org")
-		set (CPACK_NSIS_MENU_LINKS "nano_wallet.exe" "Nano Wallet" "https://nano.org" "Nano website")
+		set (CPACK_NSIS_DISPLAY_NAME "Chratos")
+		set (CPACK_PACKAGE_NAME "Chratos_Installer")
+		set (CPACK_NSIS_PACKAGE_NAME "Chratos ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+		set (CPACK_NSIS_URL_INFO_ABOUT "https://chratos.io")
+		set (CPACK_NSIS_CONTACT "info@chratos.io")
+		set (CPACK_NSIS_MENU_LINKS "chratos_wallet.exe" "Chratos Wallet" "https://chratos.io" "Chratos website")
 		set (CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 		get_target_property (Qt5WindowsPlugin Qt5::QWindowsIntegrationPlugin LOCATION)
 		get_filename_component (Qt5_bin_DIR ${Qt5_DIR}/../../../bin ABSOLUTE)
