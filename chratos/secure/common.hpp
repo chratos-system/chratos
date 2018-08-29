@@ -71,6 +71,7 @@ public:
 	chratos::block_hash head;
 	chratos::block_hash rep_block;
 	chratos::block_hash open_block;
+  chratos::block_hash dividend_block;
 	chratos::amount balance;
 	/** Seconds since posix epoch */
 	uint64_t modified;

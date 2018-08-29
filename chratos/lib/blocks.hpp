@@ -37,7 +37,9 @@ enum class block_type : uint8_t
 	receive = 3,
 	open = 4,
 	change = 5,
-	state = 6
+	state = 6,
+  dividend = 7,
+  dividend_claim = 8
 };
 class block
 {
@@ -54,6 +56,8 @@ public:
 	virtual chratos::block_hash source () const = 0;
 	// Previous block or account number for open blocks
 	virtual chratos::block_hash root () const = 0;
+  // Previous dividend for blocks or zero if there isn't one
+  virtual chratos::block_hash dividend () const = 0;
 	virtual chratos::account representative () const = 0;
 	virtual void serialize (chratos::stream &) const = 0;
 	virtual void serialize_json (std::string &) const = 0;
@@ -68,18 +72,19 @@ public:
 class send_hashables
 {
 public:
-	send_hashables (chratos::account const &, chratos::block_hash const &, chratos::amount const &);
+	send_hashables (chratos::account const &, chratos::block_hash const &, chratos::amount const &, chratos::block_hash const &);
 	send_hashables (bool &, chratos::stream &);
 	send_hashables (bool &, boost::property_tree::ptree const &);
 	void hash (blake2b_state &) const;
 	chratos::block_hash previous;
+  chratos::block_hash dividend;
 	chratos::account destination;
 	chratos::amount balance;
 };
 class send_block : public chratos::block
 {
 public:
-	send_block (chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
+	send_block (chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
 	send_block (bool &, chratos::stream &);
 	send_block (bool &, boost::property_tree::ptree const &);
 	virtual ~send_block () = default;
@@ -90,6 +95,7 @@ public:
 	chratos::block_hash previous () const override;
 	chratos::block_hash source () const override;
 	chratos::block_hash root () const override;
+  chratos::block_hash dividend () const override;
 	chratos::account representative () const override;
 	void serialize (chratos::stream &) const override;
 	void serialize_json (std::string &) const override;
@@ -110,17 +116,19 @@ public:
 class receive_hashables
 {
 public:
-	receive_hashables (chratos::block_hash const &, chratos::block_hash const &);
+	receive_hashables (chratos::block_hash const &, chratos::block_hash const &,
+ chratos::block_hash const &);
 	receive_hashables (bool &, chratos::stream &);
 	receive_hashables (bool &, boost::property_tree::ptree const &);
 	void hash (blake2b_state &) const;
 	chratos::block_hash previous;
 	chratos::block_hash source;
+  chratos::block_hash dividend;
 };
 class receive_block : public chratos::block
 {
 public:
-	receive_block (chratos::block_hash const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
+	receive_block (chratos::block_hash const &, chratos::block_hash const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
 	receive_block (bool &, chratos::stream &);
 	receive_block (bool &, boost::property_tree::ptree const &);
 	virtual ~receive_block () = default;
@@ -131,6 +139,7 @@ public:
 	chratos::block_hash previous () const override;
 	chratos::block_hash source () const override;
 	chratos::block_hash root () const override;
+  chratos::block_hash dividend () const override;
 	chratos::account representative () const override;
 	void serialize (chratos::stream &) const override;
 	void serialize_json (std::string &) const override;
@@ -151,19 +160,20 @@ public:
 class open_hashables
 {
 public:
-	open_hashables (chratos::block_hash const &, chratos::account const &, chratos::account const &);
+	open_hashables (chratos::block_hash const &, chratos::account const &, chratos::account const &, chratos::block_hash const &);
 	open_hashables (bool &, chratos::stream &);
 	open_hashables (bool &, boost::property_tree::ptree const &);
 	void hash (blake2b_state &) const;
 	chratos::block_hash source;
 	chratos::account representative;
 	chratos::account account;
+  chratos::block_hash dividend;
 };
 class open_block : public chratos::block
 {
 public:
-	open_block (chratos::block_hash const &, chratos::account const &, chratos::account const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
-	open_block (chratos::block_hash const &, chratos::account const &, chratos::account const &, std::nullptr_t);
+	open_block (chratos::block_hash const &, chratos::account const &, chratos::account const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
+	open_block (chratos::block_hash const &, chratos::account const &, chratos::account const &, chratos::block_hash const &, std::nullptr_t);
 	open_block (bool &, chratos::stream &);
 	open_block (bool &, boost::property_tree::ptree const &);
 	virtual ~open_block () = default;
@@ -174,6 +184,7 @@ public:
 	chratos::block_hash previous () const override;
 	chratos::block_hash source () const override;
 	chratos::block_hash root () const override;
+  chratos::block_hash dividend () const override;
 	chratos::account representative () const override;
 	void serialize (chratos::stream &) const override;
 	void serialize_json (std::string &) const override;
@@ -194,17 +205,18 @@ public:
 class change_hashables
 {
 public:
-	change_hashables (chratos::block_hash const &, chratos::account const &);
+	change_hashables (chratos::block_hash const &, chratos::account const &, chratos::block_hash const &);
 	change_hashables (bool &, chratos::stream &);
 	change_hashables (bool &, boost::property_tree::ptree const &);
 	void hash (blake2b_state &) const;
 	chratos::block_hash previous;
 	chratos::account representative;
+  chratos::block_hash dividend;
 };
 class change_block : public chratos::block
 {
 public:
-	change_block (chratos::block_hash const &, chratos::account const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
+	change_block (chratos::block_hash const &, chratos::account const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
 	change_block (bool &, chratos::stream &);
 	change_block (bool &, boost::property_tree::ptree const &);
 	virtual ~change_block () = default;
@@ -215,6 +227,7 @@ public:
 	chratos::block_hash previous () const override;
 	chratos::block_hash source () const override;
 	chratos::block_hash root () const override;
+  chratos::block_hash dividend () const override;
 	chratos::account representative () const override;
 	void serialize (chratos::stream &) const override;
 	void serialize_json (std::string &) const override;
@@ -235,7 +248,7 @@ public:
 class state_hashables
 {
 public:
-	state_hashables (chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::uint256_union const &);
+	state_hashables (chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::uint256_union const &, chratos::block_hash const &);
 	state_hashables (bool &, chratos::stream &);
 	state_hashables (bool &, boost::property_tree::ptree const &);
 	void hash (blake2b_state &) const;
@@ -253,11 +266,12 @@ public:
 	chratos::amount balance;
 	// Link field contains source block_hash if receiving, destination account if sending
 	chratos::uint256_union link;
+  chratos::block_hash dividend;
 };
 class state_block : public chratos::block
 {
 public:
-	state_block (chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::uint256_union const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
+	state_block (chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::uint256_union const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
 	state_block (bool &, chratos::stream &);
 	state_block (bool &, boost::property_tree::ptree const &);
 	virtual ~state_block () = default;
@@ -268,6 +282,7 @@ public:
 	chratos::block_hash previous () const override;
 	chratos::block_hash source () const override;
 	chratos::block_hash root () const override;
+  chratos::block_hash dividend () const override;
 	chratos::account representative () const override;
 	void serialize (chratos::stream &) const override;
 	void serialize_json (std::string &) const override;

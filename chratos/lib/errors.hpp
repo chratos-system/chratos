@@ -74,6 +74,7 @@ enum class error_rpc
 	bad_previous,
 	bad_representative_number,
 	bad_source,
+  bad_dividend,
 	bad_timeout,
 	block_create_balance_mismatch,
 	block_create_key_required,

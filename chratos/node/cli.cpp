@@ -244,7 +244,7 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 		std::cout << "Testing hash function" << std::endl;
 		chratos::raw_key key;
 		key.data.clear ();
-		chratos::send_block send (0, 0, 0, key, 0, 0);
+		chratos::send_block send (0, 0, 0, 0, key, 0, 0);
 		std::cout << "Testing key derivation function" << std::endl;
 		chratos::raw_key junk1;
 		junk1.data.clear ();

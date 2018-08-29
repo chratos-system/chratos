@@ -155,6 +155,7 @@ public:
 	bool block_exists (MDB_txn *, chratos::block_hash const &);
 	chratos::block_counts block_count (MDB_txn *);
 	bool root_exists (MDB_txn *, chratos::uint256_union const &);
+  chratos::block_hash dividend_get ();
 
 	void frontier_put (MDB_txn *, chratos::block_hash const &, chratos::account const &);
 	chratos::account frontier_get (MDB_txn *, chratos::block_hash const &);

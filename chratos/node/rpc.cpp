@@ -1072,6 +1072,16 @@ void chratos::rpc_handler::block_create ()
 				ec = nano::error_common::invalid_amount;
 			}
 		}
+    chratos::block_hash dividend (0);
+    boost::optional<std::string> dividend_text (request.get_optional<std::string> ("dividend"));
+    if (!ec && dividend_text.is_initialized ())
+    {
+      if (dividend.decode_dec (dividend_text.get ()))
+      {
+        ec = nano::error_rpc::bad_dividend;
+      }
+    }
+
 		auto work (work_optional_impl ());
 		chratos::raw_key prv;
 		prv.data.clear ();
@@ -1182,7 +1192,7 @@ void chratos::rpc_handler::block_create ()
 					{
 						work = node.work_generate_blocking (previous.is_zero () ? pub : previous);
 					}
-					chratos::state_block state (pub, previous, representative, balance, link, prv, pub, work);
+					chratos::state_block state (pub, previous, representative, balance, link, dividend, prv, pub, work);
 					response_l.put ("hash", state.hash ().to_string ());
 					std::string contents;
 					state.serialize_json (contents);
@@ -1201,7 +1211,7 @@ void chratos::rpc_handler::block_create ()
 					{
 						work = node.work_generate_blocking (pub);
 					}
-					chratos::open_block open (source, representative, pub, prv, pub, work);
+					chratos::open_block open (source, representative, dividend, pub, prv, pub, work);
 					response_l.put ("hash", open.hash ().to_string ());
 					std::string contents;
 					open.serialize_json (contents);
@@ -1220,7 +1230,7 @@ void chratos::rpc_handler::block_create ()
 					{
 						work = node.work_generate_blocking (previous);
 					}
-					chratos::receive_block receive (previous, source, prv, pub, work);
+					chratos::receive_block receive (previous, source, dividend, prv, pub, work);
 					response_l.put ("hash", receive.hash ().to_string ());
 					std::string contents;
 					receive.serialize_json (contents);
@@ -1239,7 +1249,7 @@ void chratos::rpc_handler::block_create ()
 					{
 						work = node.work_generate_blocking (previous);
 					}
-					chratos::change_block change (previous, representative, prv, pub, work);
+					chratos::change_block change (previous, representative, dividend, prv, pub, work);
 					response_l.put ("hash", change.hash ().to_string ());
 					std::string contents;
 					change.serialize_json (contents);
@@ -1260,7 +1270,7 @@ void chratos::rpc_handler::block_create ()
 						{
 							work = node.work_generate_blocking (previous);
 						}
-						chratos::send_block send (previous, destination, balance.number () - amount.number (), prv, pub, work);
+						chratos::send_block send (previous, destination, balance.number () - amount.number (), dividend, prv, pub, work);
 						response_l.put ("hash", send.hash ().to_string ());
 						std::string contents;
 						send.serialize_json (contents);

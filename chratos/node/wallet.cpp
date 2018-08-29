@@ -892,6 +892,7 @@ std::shared_ptr<chratos::block> chratos::wallet::receive_action (chratos::block 
 {
 	chratos::account account;
 	auto hash (send_a.hash ());
+  auto dividend (send_a.dividend ());
 	std::shared_ptr<chratos::block> block;
 	if (node.config.receive_minimum.number () <= amount_a.number ())
 	{
@@ -913,11 +914,11 @@ std::shared_ptr<chratos::block> chratos::wallet::receive_action (chratos::block 
 					{
 						std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, info.rep_block);
 						assert (rep_block != nullptr);
-						block.reset (new chratos::state_block (account, info.head, rep_block->representative (), info.balance.number () + pending_info.amount.number (), hash, prv, account, cached_work));
+						block.reset (new chratos::state_block (account, info.head, rep_block->representative (), info.balance.number () + pending_info.amount.number (), hash, dividend, prv, account, cached_work));
 					}
 					else
 					{
-						block.reset (new chratos::state_block (account, 0, representative_a, pending_info.amount, hash, prv, account, cached_work));
+						block.reset (new chratos::state_block (account, 0, representative_a, pending_info.amount, hash, dividend, prv, account, cached_work));
 					}
 				}
 				else
@@ -974,7 +975,7 @@ std::shared_ptr<chratos::block> chratos::wallet::change_action (chratos::account
 				assert (!error2);
 				uint64_t cached_work (0);
 				store.work_get (transaction, source_a, cached_work);
-				block.reset (new chratos::state_block (source_a, info.head, representative_a, info.balance, 0, prv, source_a, cached_work));
+				block.reset (new chratos::state_block (source_a, info.head, representative_a, info.balance, 0, info.dividend_block, prv, source_a, cached_work));
 			}
 		}
 	}
@@ -1045,7 +1046,7 @@ std::shared_ptr<chratos::block> chratos::wallet::send_action (chratos::account c
 						assert (rep_block != nullptr);
 						uint64_t cached_work (0);
 						store.work_get (transaction, source_a, cached_work);
-						block.reset (new chratos::state_block (source_a, info.head, rep_block->representative (), balance - amount_a, account_a, prv, source_a, cached_work));
+						block.reset (new chratos::state_block (source_a, info.head, rep_block->representative (), balance - amount_a, account_a, info.dividend_block, prv, source_a, cached_work));
 						if (id_mdb_val && block != nullptr)
 						{
 							auto status (mdb_put (transaction, node.wallets.send_action_ids, *id_mdb_val, chratos::mdb_val (block->hash ()), 0));

@@ -96,6 +96,8 @@ std::string nano::error_rpc_messages::message (int ev) const
 			return "Bad representative number";
 		case nano::error_rpc::bad_source:
 			return "Bad source";
+    case nano::error_rpc::bad_dividend:
+      return "Bad dividend";
 		case nano::error_rpc::bad_timeout:
 			return "Bad timeout number";
 		case nano::error_rpc::block_create_balance_mismatch:
