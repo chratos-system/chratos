@@ -90,7 +90,6 @@ int main (int argc, char * const * argv)
 					chratos::open_block genesis_block (genesis.pub, genesis.pub, genesis.pub, dividend, genesis.prv, genesis.pub, work.generate (genesis.pub));
 					std::cout << genesis_block.to_json ();
 					chratos::block_hash previous (genesis_block.hash ());
-          chratos::block_hash dividend (0);
 					for (auto i (0); i != 8; ++i)
 					{
 						chratos::uint128_t yearly_distribution (chratos::uint128_t (1) << (127 - (i == 7 ? 6 : i)));
@@ -173,7 +172,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_profile_generate"))
 		{
 			chratos::work_pool work (std::numeric_limits<unsigned>::max (), nullptr);
-			chratos::change_block block (0, 0, chratos::keypair ().prv, 0, 0);
+			chratos::change_block block (0, 0, 0, chratos::keypair ().prv, 0, 0);
 			std::cerr << "Starting generation profiling\n";
 			for (uint64_t i (0); true; ++i)
 			{
@@ -243,7 +242,7 @@ int main (int argc, char * const * argv)
 								return opencl->generate_work (root_a);
 							}
 							                                                                        : std::function<boost::optional<uint64_t> (chratos::uint256_union const &)> (nullptr));
-							chratos::change_block block (0, 0, chratos::keypair ().prv, 0, 0);
+							chratos::change_block block (0, 0, 0, chratos::keypair ().prv, 0, 0);
 							std::cerr << boost::str (boost::format ("Starting OpenCL generation profiling. Platform: %1%. Device: %2%. Threads: %3%\n") % platform % device % threads);
 							for (uint64_t i (0); true; ++i)
 							{
@@ -278,7 +277,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_profile_verify"))
 		{
 			chratos::work_pool work (std::numeric_limits<unsigned>::max (), nullptr);
-			chratos::change_block block (0, 0, chratos::keypair ().prv, 0, 0);
+			chratos::change_block block (0, 0, 0, chratos::keypair ().prv, 0, 0);
 			std::cerr << "Starting verification profiling\n";
 			for (uint64_t i (0); true; ++i)
 			{

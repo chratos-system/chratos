@@ -24,16 +24,18 @@ char const * test_genesis_data = R"%%%({
 	"representative": "chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
 	"account": "chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
 	"work": "9680625b39d3363d",
+  "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
 	"signature": "ECDA914373A2F0CA1296475BAEE40500A7F0A7AD72A5A80C81D7FAB7F6C802B2CC7DB50F5DD0FB25B2EF11761FA7344A158DD5A700B21BD47DE5BD0F63153A02"
 })%%%";
 
 char const * beta_genesis_data = R"%%%({
-    "type": "open",
-    "source": "5DB43C7501AC8C1CE5C21C9CF4F2EA1973205F315BF419BD3401B2D3A009740D",
-    "representative": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
-    "account": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
-    "work": "4a18a369468685b2",
-    "signature": "BBCF0BC4873D0007F338A980BC9BEDB1481B19507244E063DBB488BDB2977929F83E1300202DC6D997D8FDC2AA055D7123345698F580BF9A44104D0EAD8CDC0A"
+  "type": "open",
+  "source": "5DB43C7501AC8C1CE5C21C9CF4F2EA1973205F315BF419BD3401B2D3A009740D",
+  "representative": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
+  "account": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
+  "work": "4a18a369468685b2",
+  "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
+  "signature": "BBCF0BC4873D0007F338A980BC9BEDB1481B19507244E063DBB488BDB2977929F83E1300202DC6D997D8FDC2AA055D7123345698F580BF9A44104D0EAD8CDC0A"
 })%%%";
 
 char const * live_genesis_data = R"%%%({
@@ -42,6 +44,7 @@ char const * live_genesis_data = R"%%%({
 	"representative": "chr_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
 	"account": "chr_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
 	"work": "62f05417dd3fb691",
+  "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
 	"signature": "9F0C933C8ADE004D808EA1985FA746A7E95BA2A38F867640F53EC8F180BDFE9E2C1268DEAD7C2664F356E37ABA362BC58E46DBA03E523A7B5A19E4B6EB12BB02"
 })%%%";
 
@@ -209,7 +212,8 @@ size_t chratos::account_info::db_size () const
 	assert (reinterpret_cast<const uint8_t *> (this) == reinterpret_cast<const uint8_t *> (&head));
 	assert (reinterpret_cast<const uint8_t *> (&head) + sizeof (head) == reinterpret_cast<const uint8_t *> (&rep_block));
 	assert (reinterpret_cast<const uint8_t *> (&rep_block) + sizeof (rep_block) == reinterpret_cast<const uint8_t *> (&open_block));
-	assert (reinterpret_cast<const uint8_t *> (&open_block) + sizeof (open_block) == reinterpret_cast<const uint8_t *> (&balance));
+	assert (reinterpret_cast<const uint8_t *> (&open_block) + sizeof (open_block) == reinterpret_cast<const uint8_t *> (&dividend_block));
+	assert (reinterpret_cast<const uint8_t *> (&dividend_block) + sizeof (dividend_block) == reinterpret_cast<const uint8_t *> (&balance));
 	assert (reinterpret_cast<const uint8_t *> (&balance) + sizeof (balance) == reinterpret_cast<const uint8_t *> (&modified));
 	assert (reinterpret_cast<const uint8_t *> (&modified) + sizeof (modified) == reinterpret_cast<const uint8_t *> (&block_count));
 	return sizeof (head) + sizeof (rep_block) + sizeof (open_block) + sizeof (balance) + sizeof (modified) + sizeof (block_count);
@@ -844,6 +848,7 @@ chratos::genesis::genesis ()
 	boost::property_tree::ptree tree;
 	std::stringstream istream (chratos::genesis_block);
 	boost::property_tree::read_json (istream, tree);
+  std::cout << chratos::genesis_block << std::endl;
 	auto block (chratos::deserialize_block_json (tree));
 	assert (dynamic_cast<chratos::open_block *> (block.get ()) != nullptr);
 	open.reset (static_cast<chratos::open_block *> (block.release ()));

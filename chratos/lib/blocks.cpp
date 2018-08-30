@@ -106,6 +106,10 @@ chratos::send_hashables::send_hashables (bool & error_a, chratos::stream & strea
     if (!error_a)
     {
       error_a = chratos::read (stream_a, balance.bytes);
+      if (!error_a)
+      {
+        error_a = chratos::read (stream_a, dividend.bytes);
+      }
     }
   }
 }
@@ -117,6 +121,7 @@ chratos::send_hashables::send_hashables (bool & error_a, boost::property_tree::p
     auto previous_l (tree_a.get<std::string> ("previous"));
     auto destination_l (tree_a.get<std::string> ("destination"));
     auto balance_l (tree_a.get<std::string> ("balance"));
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     error_a = previous.decode_hex (previous_l);
     if (!error_a)
     {
@@ -124,6 +129,10 @@ chratos::send_hashables::send_hashables (bool & error_a, boost::property_tree::p
       if (!error_a)
       {
         error_a = balance.decode_hex (balance_l);
+        if (!error_a)
+        {
+          error_a = dividend.decode_hex (dividend_l);
+        }
       }
     }
   }
@@ -148,6 +157,7 @@ void chratos::send_block::serialize (chratos::stream & stream_a) const
   write (stream_a, hashables.previous.bytes);
   write (stream_a, hashables.destination.bytes);
   write (stream_a, hashables.balance.bytes);
+  write (stream_a, hashables.dividend.bytes);
   write (stream_a, signature.bytes);
   write (stream_a, work);
 }
@@ -165,6 +175,7 @@ void chratos::send_block::serialize_json (std::string & string_a) const
   tree.put ("balance", balance);
   std::string signature_l;
   signature.encode_hex (signature_l);
+  tree.put ("dividend", hashables.dividend.to_string());
   tree.put ("work", chratos::to_string_hex (work));
   tree.put ("signature", signature_l);
   std::stringstream ostream;
@@ -184,10 +195,14 @@ bool chratos::send_block::deserialize (chratos::stream & stream_a)
       error = read (stream_a, hashables.balance.bytes);
       if (!error)
       {
-        error = read (stream_a, signature.bytes);
-        if (!error)
+        error = read (stream_a, hashables.dividend.bytes);
+        if (!error) 
         {
-          error = read (stream_a, work);
+          error = read (stream_a, signature.bytes);
+          if (!error)
+          {
+            error = read (stream_a, work);
+          }
         }
       }
     }
@@ -203,6 +218,7 @@ bool chratos::send_block::deserialize_json (boost::property_tree::ptree const & 
     assert (tree_a.get<std::string> ("type") == "send");
     auto previous_l (tree_a.get<std::string> ("previous"));
     auto destination_l (tree_a.get<std::string> ("destination"));
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     auto balance_l (tree_a.get<std::string> ("balance"));
     auto work_l (tree_a.get<std::string> ("work"));
     auto signature_l (tree_a.get<std::string> ("signature"));
@@ -216,9 +232,13 @@ bool chratos::send_block::deserialize_json (boost::property_tree::ptree const & 
         if (!error)
         {
           error = chratos::from_string_hex (work_l, work);
-          if (!error)
+          if (!error) 
           {
             error = signature.decode_hex (signature_l);
+            if (!error)
+            {
+              error = hashables.dividend.decode_hex (dividend_l);
+            }
           }
         }
       }
@@ -258,12 +278,17 @@ hashables (error_a, tree_a)
   {
     try
     {
+      auto dividend_l (tree_a.get<std::string> ("dividend"));
       auto signature_l (tree_a.get<std::string> ("signature"));
       auto work_l (tree_a.get<std::string> ("work"));
       error_a = signature.decode_hex (signature_l);
       if (!error_a)
       {
         error_a = chratos::from_string_hex (work_l, work);
+        if (!error_a) 
+        {
+          error_a = hashables.dividend.decode_hex (dividend_l);
+        }
       }
     }
     catch (std::runtime_error const &)
@@ -359,6 +384,10 @@ chratos::open_hashables::open_hashables (bool & error_a, chratos::stream & strea
     if (!error_a)
     {
       error_a = chratos::read (stream_a, account.bytes);
+      if (!error_a)
+      {
+        error_a = chratos::read (stream_a, dividend.bytes);
+      }
     }
   }
 }
@@ -370,6 +399,7 @@ chratos::open_hashables::open_hashables (bool & error_a, boost::property_tree::p
     auto source_l (tree_a.get<std::string> ("source"));
     auto representative_l (tree_a.get<std::string> ("representative"));
     auto account_l (tree_a.get<std::string> ("account"));
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     error_a = source.decode_hex (source_l);
     if (!error_a)
     {
@@ -377,6 +407,10 @@ chratos::open_hashables::open_hashables (bool & error_a, boost::property_tree::p
       if (!error_a)
       {
         error_a = account.decode_account (account_l);
+        if (!error_a) 
+        {
+          error_a = dividend.decode_hex (dividend_l);
+        }
       }
     }
   }
@@ -469,6 +503,7 @@ void chratos::open_block::serialize (chratos::stream & stream_a) const
   write (stream_a, hashables.source);
   write (stream_a, hashables.representative);
   write (stream_a, hashables.account);
+  write (stream_a, hashables.dividend);
   write (stream_a, signature);
   write (stream_a, work);
 }
@@ -480,6 +515,7 @@ void chratos::open_block::serialize_json (std::string & string_a) const
   tree.put ("source", hashables.source.to_string ());
   tree.put ("representative", representative ().to_account ());
   tree.put ("account", hashables.account.to_account ());
+  tree.put ("dividend", hashables.dividend.to_string());
   std::string signature_l;
   signature.encode_hex (signature_l);
   tree.put ("work", chratos::to_string_hex (work));
@@ -500,10 +536,14 @@ bool chratos::open_block::deserialize (chratos::stream & stream_a)
       error = read (stream_a, hashables.account);
       if (!error)
       {
-        error = read (stream_a, signature);
+        error = read(stream_a, hashables.dividend);
         if (!error)
         {
-          error = read (stream_a, work);
+          error = read (stream_a, signature);
+          if (!error)
+          {
+            error = read (stream_a, work);
+          }
         }
       }
     }
@@ -520,6 +560,7 @@ bool chratos::open_block::deserialize_json (boost::property_tree::ptree const & 
     auto source_l (tree_a.get<std::string> ("source"));
     auto representative_l (tree_a.get<std::string> ("representative"));
     auto account_l (tree_a.get<std::string> ("account"));
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     auto work_l (tree_a.get<std::string> ("work"));
     auto signature_l (tree_a.get<std::string> ("signature"));
     error = hashables.source.decode_hex (source_l);
@@ -535,6 +576,10 @@ bool chratos::open_block::deserialize_json (boost::property_tree::ptree const & 
           if (!error)
           {
             error = signature.decode_hex (signature_l);
+            if (!error)
+            {
+              error = hashables.dividend.decode_hex (dividend_l);
+            }
           }
         }
       }
@@ -615,6 +660,10 @@ chratos::change_hashables::change_hashables (bool & error_a, chratos::stream & s
   if (!error_a)
   {
     error_a = chratos::read (stream_a, representative);
+    if (!error_a)
+    {
+      error_a = chratos::read (stream_a, dividend.bytes);
+    }
   }
 }
 
@@ -622,12 +671,17 @@ chratos::change_hashables::change_hashables (bool & error_a, boost::property_tre
 {
   try
   {
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     auto previous_l (tree_a.get<std::string> ("previous"));
     auto representative_l (tree_a.get<std::string> ("representative"));
     error_a = previous.decode_hex (previous_l);
     if (!error_a)
     {
       error_a = representative.decode_account (representative_l);
+      if (!error_a)
+      {
+        error_a = dividend.decode_hex (dividend_l);
+      }
     }
   }
   catch (std::runtime_error const &)
@@ -669,12 +723,17 @@ hashables (error_a, tree_a)
   {
     try
     {
+      auto dividend_l (tree_a.get<std::string> ("dividend"));
       auto work_l (tree_a.get<std::string> ("work"));
       auto signature_l (tree_a.get<std::string> ("signature"));
       error_a = chratos::from_string_hex (work_l, work);
       if (!error_a)
       {
         error_a = signature.decode_hex (signature_l);
+        if (!error_a)
+        {
+          error_a = hashables.dividend.decode_hex (dividend_l);
+        }
       }
     }
     catch (std::runtime_error const &)
@@ -708,6 +767,7 @@ void chratos::change_block::serialize (chratos::stream & stream_a) const
 {
   write (stream_a, hashables.previous);
   write (stream_a, hashables.representative);
+  write (stream_a, hashables.dividend);
   write (stream_a, signature);
   write (stream_a, work);
 }
@@ -718,6 +778,7 @@ void chratos::change_block::serialize_json (std::string & string_a) const
   tree.put ("type", "change");
   tree.put ("previous", hashables.previous.to_string ());
   tree.put ("representative", representative ().to_account ());
+  tree.put ("dividend", hashables.dividend.to_string());
   tree.put ("work", chratos::to_string_hex (work));
   std::string signature_l;
   signature.encode_hex (signature_l);
@@ -735,10 +796,14 @@ bool chratos::change_block::deserialize (chratos::stream & stream_a)
     error = read (stream_a, hashables.representative);
     if (!error)
     {
-      error = read (stream_a, signature);
+      error = read (stream_a, hashables.dividend);
       if (!error)
       {
-        error = read (stream_a, work);
+        error = read (stream_a, signature);
+        if (!error)
+        {
+          error = read (stream_a, work);
+        }
       }
     }
   }
@@ -755,6 +820,7 @@ bool chratos::change_block::deserialize_json (boost::property_tree::ptree const 
     auto representative_l (tree_a.get<std::string> ("representative"));
     auto work_l (tree_a.get<std::string> ("work"));
     auto signature_l (tree_a.get<std::string> ("signature"));
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     error = hashables.previous.decode_hex (previous_l);
     if (!error)
     {
@@ -765,6 +831,9 @@ bool chratos::change_block::deserialize_json (boost::property_tree::ptree const 
         if (!error)
         {
           error = signature.decode_hex (signature_l);
+          if (!error) {
+            error = hashables.dividend.decode_hex (dividend_l);
+          }
         }
       }
     }
@@ -869,6 +938,10 @@ chratos::state_hashables::state_hashables (bool & error_a, chratos::stream & str
         if (!error_a)
         {
           error_a = chratos::read (stream_a, link);
+          if (!error_a)
+          {
+            error_a = chratos::read (stream_a, dividend.bytes);
+          }
         }
       }
     }
@@ -884,6 +957,7 @@ chratos::state_hashables::state_hashables (bool & error_a, boost::property_tree:
     auto representative_l (tree_a.get<std::string> ("representative"));
     auto balance_l (tree_a.get<std::string> ("balance"));
     auto link_l (tree_a.get<std::string> ("link"));
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     error_a = account.decode_account (account_l);
     if (!error_a)
     {
@@ -897,6 +971,10 @@ chratos::state_hashables::state_hashables (bool & error_a, boost::property_tree:
           if (!error_a)
           {
             error_a = link.decode_account (link_l) && link.decode_hex (link_l);
+            if (!error_a) 
+            {
+              error_a = dividend.decode_hex (dividend_l);
+            }
           }
         }
       }
@@ -994,6 +1072,7 @@ void chratos::state_block::serialize (chratos::stream & stream_a) const
   write (stream_a, hashables.representative);
   write (stream_a, hashables.balance);
   write (stream_a, hashables.link);
+  write (stream_a, hashables.dividend);
   write (stream_a, signature);
   write (stream_a, boost::endian::native_to_big (work));
 }
@@ -1008,6 +1087,7 @@ void chratos::state_block::serialize_json (std::string & string_a) const
   tree.put ("balance", hashables.balance.to_string_dec ());
   tree.put ("link", hashables.link.to_string ());
   tree.put ("link_as_account", hashables.link.to_account ());
+  tree.put ("dividend", hashables.dividend.to_string());
   std::string signature_l;
   signature.encode_hex (signature_l);
   tree.put ("signature", signature_l);
@@ -1034,11 +1114,15 @@ bool chratos::state_block::deserialize (chratos::stream & stream_a)
           error = read (stream_a, hashables.link);
           if (!error)
           {
-            error = read (stream_a, signature);
+            error = read (stream_a, hashables.dividend);
             if (!error)
             {
-              error = read (stream_a, work);
-              boost::endian::big_to_native_inplace (work);
+              error = read (stream_a, signature);
+              if (!error)
+              {
+                error = read (stream_a, work);
+                boost::endian::big_to_native_inplace (work);
+              }
             }
           }
         }
@@ -1059,6 +1143,7 @@ bool chratos::state_block::deserialize_json (boost::property_tree::ptree const &
     auto representative_l (tree_a.get<std::string> ("representative"));
     auto balance_l (tree_a.get<std::string> ("balance"));
     auto link_l (tree_a.get<std::string> ("link"));
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     auto work_l (tree_a.get<std::string> ("work"));
     auto signature_l (tree_a.get<std::string> ("signature"));
     error = hashables.account.decode_account (account_l);
@@ -1080,6 +1165,10 @@ bool chratos::state_block::deserialize_json (boost::property_tree::ptree const &
               if (!error)
               {
                 error = signature.decode_hex (signature_l);
+                if (!error)
+                {
+                  error = hashables.dividend.decode_hex (dividend_l);
+                }
               }
             }
           }
@@ -1301,10 +1390,14 @@ bool chratos::receive_block::deserialize (chratos::stream & stream_a)
     error = read (stream_a, hashables.source.bytes);
     if (!error)
     {
-      error = read (stream_a, signature.bytes);
+      error = read (stream_a, hashables.dividend.bytes);
       if (!error)
       {
-        error = read (stream_a, work);
+        error = read (stream_a, signature.bytes);
+        if (!error)
+        {
+          error = read (stream_a, work);
+        }
       }
     }
   }
@@ -1321,6 +1414,7 @@ bool chratos::receive_block::deserialize_json (boost::property_tree::ptree const
     auto source_l (tree_a.get<std::string> ("source"));
     auto work_l (tree_a.get<std::string> ("work"));
     auto signature_l (tree_a.get<std::string> ("signature"));
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     error = hashables.previous.decode_hex (previous_l);
     if (!error)
     {
@@ -1331,6 +1425,10 @@ bool chratos::receive_block::deserialize_json (boost::property_tree::ptree const
         if (!error)
         {
           error = signature.decode_hex (signature_l);
+          if (!error)
+          {
+            error = hashables.dividend.decode_hex (dividend_l);
+          }
         }
       }
     }
@@ -1346,6 +1444,7 @@ void chratos::receive_block::serialize (chratos::stream & stream_a) const
 {
   write (stream_a, hashables.previous.bytes);
   write (stream_a, hashables.source.bytes);
+  write (stream_a, hashables.dividend.bytes);
   write (stream_a, signature.bytes);
   write (stream_a, work);
 }
@@ -1362,6 +1461,7 @@ void chratos::receive_block::serialize_json (std::string & string_a) const
   tree.put ("source", source);
   std::string signature_l;
   signature.encode_hex (signature_l);
+  tree.put ("dividend", hashables.dividend.to_string());
   tree.put ("work", chratos::to_string_hex (work));
   tree.put ("signature", signature_l);
   std::stringstream ostream;
@@ -1502,6 +1602,10 @@ chratos::receive_hashables::receive_hashables (bool & error_a, chratos::stream &
   if (!error_a)
   {
     error_a = chratos::read (stream_a, source.bytes);
+    if (!error_a)
+    {
+      error_a = chratos::read (stream_a, dividend.bytes);
+    }
   }
 }
 
@@ -1511,10 +1615,14 @@ chratos::receive_hashables::receive_hashables (bool & error_a, boost::property_t
   {
     auto previous_l (tree_a.get<std::string> ("previous"));
     auto source_l (tree_a.get<std::string> ("source"));
+    auto dividend_l (tree_a.get<std::string> ("dividend"));
     error_a = previous.decode_hex (previous_l);
     if (!error_a)
     {
       error_a = source.decode_hex (source_l);
+      if (!error_a) {
+        error_a = dividend.decode_hex (dividend_l);
+      }
     }
   }
   catch (std::runtime_error const &)
