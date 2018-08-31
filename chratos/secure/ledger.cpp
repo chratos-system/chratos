@@ -157,7 +157,12 @@ public:
 			ledger.stats.inc (chratos::stat::type::rollback, chratos::stat::detail::open);
 		}
 		ledger.store.block_del (transaction, hash);
+	}	
+  void dividend_block (chratos::dividend_block const & block_a) override
+	{
+		auto hash (block_a.hash ());
 	}
+
 	MDB_txn * transaction;
 	chratos::ledger & ledger;
 };
@@ -172,6 +177,7 @@ public:
 	void open_block (chratos::open_block const &) override;
 	void change_block (chratos::change_block const &) override;
 	void state_block (chratos::state_block const &) override;
+	void dividend_block (chratos::dividend_block const &) override;
 	void state_block_impl (chratos::state_block const &);
 	void epoch_block_impl (chratos::state_block const &);
 	chratos::ledger & ledger;
@@ -578,6 +584,10 @@ void ledger_processor::open_block (chratos::open_block const & block_a)
 	}
 }
 
+void ledger_processor::dividend_block (chratos::dividend_block const & block_a)
+{
+}
+
 ledger_processor::ledger_processor (chratos::ledger & ledger_a, MDB_txn * transaction_a) :
 ledger (ledger_a),
 transaction (transaction_a)
@@ -891,6 +901,10 @@ public:
 		{
 			result &= ledger.store.block_exists (transaction, block_a.hashables.link);
 		}
+	}
+	void dividend_block (chratos::dividend_block const & block_a) override
+	{
+		result = ledger.store.block_exists (transaction, block_a.previous ());
 	}
 	chratos::ledger & ledger;
 	MDB_txn * transaction;

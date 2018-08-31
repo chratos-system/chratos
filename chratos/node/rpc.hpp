@@ -161,6 +161,7 @@ public:
 	void password_change ();
 	void password_enter ();
 	void password_valid (bool = false);
+  void pay_dividend ();
 	void payment_begin ();
 	void payment_init ();
 	void payment_end ();

@@ -54,6 +54,10 @@ public:
 			fill_value (block_a);
 		}
 	}
+  void dividend_block (chratos::dividend_block const & block_a) override
+  {
+		fill_value (block_a);
+  }
 	MDB_txn * transaction;
 	chratos::block_store & store;
 };
