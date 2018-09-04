@@ -1077,6 +1077,89 @@ std::shared_ptr<chratos::block> chratos::wallet::send_action (chratos::account c
 	return block;
 }
 
+std::shared_ptr<chratos::block> chratos::wallet::pay_dividend_action (chratos::account const & source_a, chratos::uint128_t const & amount_a, bool generate_work_a, boost::optional<std::string> id_a)
+{
+	std::shared_ptr<chratos::block> block;
+	boost::optional<chratos::mdb_val> id_mdb_val;
+	if (id_a)
+	{
+		id_mdb_val = chratos::mdb_val (id_a->size (), const_cast<char *> (id_a->data ()));
+	}
+	bool error = false;
+	bool cached_block = false;
+	{
+		chratos::transaction transaction (store.environment, nullptr, (bool)id_mdb_val);
+		if (id_mdb_val)
+		{
+			chratos::mdb_val result;
+			auto status (mdb_get (transaction, node.wallets.pay_dividend_action_ids, *id_mdb_val, result));
+			if (status == 0)
+			{
+				chratos::uint256_union hash (result);
+				block = node.store.block_get (transaction, hash);
+				if (block != nullptr)
+				{
+					cached_block = true;
+					node.network.republish_block (transaction, block);
+				}
+			}
+			else if (status != MDB_NOTFOUND)
+			{
+				error = true;
+			}
+		}
+		if (!error && block == nullptr)
+		{
+			if (store.valid_password (transaction))
+			{
+				auto existing (store.find (transaction, source_a));
+				if (existing != store.end ())
+				{
+					auto balance (node.ledger.account_balance (transaction, source_a));
+					if (!balance.is_zero () && balance >= amount_a)
+					{
+						chratos::account_info info;
+						auto error1 (node.ledger.store.account_get (transaction, source_a, info));
+						assert (!error1);
+						chratos::raw_key prv;
+						auto error2 (store.fetch (transaction, source_a, prv));
+						assert (!error2);
+						std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, info.rep_block);
+						assert (rep_block != nullptr);
+						uint64_t cached_work (0);
+						store.work_get (transaction, source_a, cached_work);
+						block.reset (new chratos::state_block (source_a, info.head, rep_block->representative (), balance - amount_a, info.dividend_block, info.dividend_block, prv, source_a, cached_work));
+						if (id_mdb_val && block != nullptr)
+						{
+							auto status (mdb_put (transaction, node.wallets.pay_dividend_action_ids, *id_mdb_val, chratos::mdb_val (block->hash ()), 0));
+							if (status != 0)
+							{
+								block = nullptr;
+								error = true;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	if (!error && block != nullptr && !cached_block)
+	{
+		if (chratos::work_validate (*block))
+		{
+			node.work_generate_blocking (*block);
+		}
+		node.process_active (block);
+		node.block_processor.flush ();
+		if (generate_work_a)
+		{
+			work_ensure (source_a, block->hash ());
+		}
+	}
+	return block;
+
+}
+
 bool chratos::wallet::change_sync (chratos::account const & source_a, chratos::account const & representative_a)
 {
 	std::promise<bool> result;
@@ -1130,6 +1213,22 @@ void chratos::wallet::send_async (chratos::account const & source_a, chratos::ac
 		auto block (send_action (source_a, account_a, amount_a, generate_work_a, id_a));
 		action_a (block);
 	});
+}
+
+chratos::block_hash chratos::wallet::send_dividend_sync (chratos::account const & source_a, chratos::uint128_t const & amount_a) {
+	std::promise<chratos::block_hash> result;
+	send_dividend_async (source_a, amount_a, [&result](std::shared_ptr<chratos::block> block_a) {
+		result.set_value (block_a->hash ());
+	},
+	true);
+	return result.get_future ().get ();
+}
+
+void chratos::wallet::send_dividend_async (chratos::account const & source_a, chratos::uint128_t const & amount_a, std::function<void(std::shared_ptr<chratos::block>)> const & action_a, bool generate_work_a, boost::optional<std::string> id_a) {
+  this->node.wallets.queue_wallet_action (chratos::wallets::high_priority, [this, source_a, amount_a, action_a, generate_work_a, id_a]() {
+    auto block (pay_dividend_action (source_a, amount_a, generate_work_a, id_a));
+    action_a (block);
+  });
 }
 
 // Update work for account if latest root is root_a
@@ -1268,6 +1367,7 @@ thread ([this]() { do_wallet_actions (); })
 		chratos::transaction transaction (node.store.environment, nullptr, true);
 		auto status (mdb_dbi_open (transaction, nullptr, MDB_CREATE, &handle));
 		status |= mdb_dbi_open (transaction, "send_action_ids", MDB_CREATE, &send_action_ids);
+    status |= mdb_dbi_open (transaction, "pay_dividend_action_ids", MDB_CREATE, &pay_dividend_action_ids);
 		assert (status == 0);
 		std::string beginning (chratos::uint256_union (0).to_string ());
 		std::string end ((chratos::uint256_union (chratos::uint256_t (0) - chratos::uint256_t (1))).to_string ());

@@ -2054,6 +2054,91 @@ void chratos::rpc_handler::pending_exists ()
 	response_errors ();
 }
 
+void chratos::rpc_handler::pay_dividend ()
+{	
+  rpc_control_impl ();
+	auto wallet (wallet_impl ());
+	auto amount (amount_impl ());
+	if (!ec)
+	{
+		if (wallet->valid_password ())
+		{
+			std::string source_text (request.get<std::string> ("source"));
+			chratos::account source;
+			if (!source.decode_account (source_text))
+			{
+					auto work (work_optional_impl ());
+					chratos::uint128_t balance (0);
+					if (!ec)
+					{
+						chratos::transaction transaction (node.store.environment, nullptr, work != 0); // false if no "work" in request, true if work > 0
+						chratos::account_info info;
+						if (!node.store.account_get (transaction, source, info))
+						{
+							balance = (info.balance).number ();
+						}
+						else
+						{
+							ec = nano::error_common::account_not_found;
+						}
+						if (!ec && work)
+						{
+							if (!chratos::work_validate (info.head, work))
+							{
+								wallet->store.work_put (transaction, source, work);
+							}
+							else
+							{
+								ec = nano::error_common::invalid_work;
+							}
+						}
+					}
+					if (!ec)
+					{
+						boost::optional<std::string> send_id (request.get_optional<std::string> ("id"));
+						if (balance >= amount.number ())
+						{
+							auto rpc_l (shared_from_this ());
+							auto response_a (response);
+              wallet->send_dividend_async (source, amount.number (), [response_a](std::shared_ptr<chratos::block> block_a) {
+								if (block_a != nullptr)
+								{
+									chratos::uint256_union hash (block_a->hash ());
+									boost::property_tree::ptree response_l;
+									response_l.put ("block", hash.to_string ());
+									response_a (response_l);
+								}
+								else
+								{
+									error_response (response_a, "Error generating block");
+								}
+							},
+							work == 0, send_id);
+						}
+						else
+						{
+							ec = nano::error_common::insufficient_balance;
+						}
+					}
+			}
+			else
+			{
+				ec = nano::error_rpc::bad_source;
+			}
+		}
+		else
+		{
+			ec = nano::error_common::wallet_locked;
+		}
+	}
+	// Because of send_async
+	if (ec)
+	{
+		response_errors ();
+	}
+
+}
+
 void chratos::rpc_handler::payment_begin ()
 {
 	std::string id_text (request.get<std::string> ("wallet"));

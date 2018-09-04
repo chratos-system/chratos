@@ -130,6 +130,7 @@ public:
 	std::shared_ptr<chratos::block> change_action (chratos::account const &, chratos::account const &, bool = true);
 	std::shared_ptr<chratos::block> receive_action (chratos::block const &, chratos::account const &, chratos::uint128_union const &, bool = true);
 	std::shared_ptr<chratos::block> send_action (chratos::account const &, chratos::account const &, chratos::uint128_t const &, bool = true, boost::optional<std::string> = {});
+  std::shared_ptr<chratos::block> pay_dividend_action (chratos::account const &, chratos::uint128_t const &, bool = true, boost::optional<std::string> = {});
 	wallet (bool &, chratos::transaction &, chratos::node &, std::string const &);
 	wallet (bool &, chratos::transaction &, chratos::node &, std::string const &, std::string const &);
 	void enter_initial_password ();
@@ -149,6 +150,8 @@ public:
 	void receive_async (std::shared_ptr<chratos::block>, chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true);
 	chratos::block_hash send_sync (chratos::account const &, chratos::account const &, chratos::uint128_t const &);
 	void send_async (chratos::account const &, chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true, boost::optional<std::string> = {});
+	chratos::block_hash send_dividend_sync (chratos::account const &, chratos::uint128_t const &);
+  void send_dividend_async (chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true, boost::optional<std::string> = {});
 	void work_apply (chratos::account const &, std::function<void(uint64_t)>);
 	void work_cache_blocking (chratos::account const &, chratos::block_hash const &);
 	void work_update (MDB_txn *, chratos::account const &, chratos::block_hash const &, uint64_t);
@@ -186,6 +189,7 @@ public:
 	chratos::kdf kdf;
 	MDB_dbi handle;
 	MDB_dbi send_action_ids;
+  MDB_dbi pay_dividend_action_ids;
 	chratos::node & node;
 	bool stopped;
 	std::thread thread;
