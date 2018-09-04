@@ -920,14 +920,19 @@ lmdb_max_dbs (128)
 			preconfigured_representatives.push_back (chratos::genesis_account);
 			break;
 		case chratos::chratos_networks::chratos_beta_network:
+			preconfigured_representatives.push_back (chratos::genesis_account);
+      /*
 			preconfigured_peers.push_back ("chratos-beta.chratosblocks.net");
 			preconfigured_representatives.push_back (chratos::account ("A59A47CC4F593E75AE9AD653FDA9358E2F7898D9ACC8C60E80D0495CE20FBA9F"));
 			preconfigured_representatives.push_back (chratos::account ("259A4011E6CAD1069A97C02C3C1F2AAA32BC093C8D82EE1334F937A4BE803071"));
 			preconfigured_representatives.push_back (chratos::account ("259A40656144FAA16D2A8516F7BE9C74A63C6CA399960EDB747D144ABB0F7ABD"));
 			preconfigured_representatives.push_back (chratos::account ("259A40A92FA42E2240805DE8618EC4627F0BA41937160B4CFF7F5335FD1933DF"));
 			preconfigured_representatives.push_back (chratos::account ("259A40FF3262E273EC451E873C4CDF8513330425B38860D882A16BCC74DA9B73"));
+      */
 			break;
 		case chratos::chratos_networks::chratos_live_network:
+			preconfigured_representatives.push_back (chratos::genesis_account);
+      /*
 			preconfigured_peers.push_back ("chratos.chratosblocks.net");
 			preconfigured_representatives.push_back (chratos::account ("A30E0A32ED41C8607AA9212843392E853FCBCB4E7CB194E35C94F07F91DE59EF"));
 			preconfigured_representatives.push_back (chratos::account ("67556D31DDFC2A440BF6147501449B4CB9572278D034EE686A6BEE29851681DF"));
@@ -937,6 +942,7 @@ lmdb_max_dbs (128)
 			preconfigured_representatives.push_back (chratos::account ("2399A083C600AA0572F5E36247D978FCFC840405F8D4B6D33161C0066A55F431"));
 			preconfigured_representatives.push_back (chratos::account ("2298FAB7C61058E77EA554CB93EDEEDA0692CBFCC540AB213B2836B29029E23A"));
 			preconfigured_representatives.push_back (chratos::account ("3FE80B4BC842E82C1C18ABFEEC47EA989E63953BC82AC411F304D13833D52A56"));
+      */
 			// 2018-09-01 UTC 00:00 in unix time
 			// Technically, time_t is never defined to be unix time, but compilers implement it as such
 			generate_hash_votes_at = std::chrono::system_clock::from_time_t (1535760000);

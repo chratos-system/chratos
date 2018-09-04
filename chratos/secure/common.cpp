@@ -143,6 +143,7 @@ chratos::account_info::account_info () :
 head (0),
 rep_block (0),
 open_block (0),
+dividend_block(0),
 balance (0),
 modified (0),
 block_count (0),
@@ -166,6 +167,7 @@ void chratos::account_info::serialize (chratos::stream & stream_a) const
 	write (stream_a, head.bytes);
 	write (stream_a, rep_block.bytes);
 	write (stream_a, open_block.bytes);
+  write (stream_a, dividend_block.bytes);
 	write (stream_a, balance.bytes);
 	write (stream_a, modified);
 	write (stream_a, block_count);
@@ -182,15 +184,19 @@ bool chratos::account_info::deserialize (chratos::stream & stream_a)
 			error = read (stream_a, open_block.bytes);
 			if (!error)
 			{
-				error = read (stream_a, balance.bytes);
-				if (!error)
-				{
-					error = read (stream_a, modified);
-					if (!error)
-					{
-						error = read (stream_a, block_count);
-					}
-				}
+        error = read (stream_a, dividend_block.bytes);
+        if (!error)
+        {
+          error = read (stream_a, balance.bytes);
+          if (!error)
+          {
+            error = read (stream_a, modified);
+            if (!error)
+            {
+              error = read (stream_a, block_count);
+            }
+          }
+        }
 			}
 		}
 	}
@@ -199,7 +205,7 @@ bool chratos::account_info::deserialize (chratos::stream & stream_a)
 
 bool chratos::account_info::operator== (chratos::account_info const & other_a) const
 {
-	return head == other_a.head && rep_block == other_a.rep_block && open_block == other_a.open_block && balance == other_a.balance && modified == other_a.modified && block_count == other_a.block_count && epoch == other_a.epoch;
+	return head == other_a.head && rep_block == other_a.rep_block && open_block == other_a.open_block && dividend_block == other_a.dividend_block && balance == other_a.balance && modified == other_a.modified && block_count == other_a.block_count && epoch == other_a.epoch;
 }
 
 bool chratos::account_info::operator!= (chratos::account_info const & other_a) const
@@ -216,7 +222,7 @@ size_t chratos::account_info::db_size () const
 	assert (reinterpret_cast<const uint8_t *> (&dividend_block) + sizeof (dividend_block) == reinterpret_cast<const uint8_t *> (&balance));
 	assert (reinterpret_cast<const uint8_t *> (&balance) + sizeof (balance) == reinterpret_cast<const uint8_t *> (&modified));
 	assert (reinterpret_cast<const uint8_t *> (&modified) + sizeof (modified) == reinterpret_cast<const uint8_t *> (&block_count));
-	return sizeof (head) + sizeof (rep_block) + sizeof (open_block) + sizeof (balance) + sizeof (modified) + sizeof (block_count);
+	return sizeof (head) + sizeof (rep_block) + sizeof (open_block) + sizeof (dividend_block) + sizeof (balance) + sizeof (modified) + sizeof (block_count);
 }
 
 chratos::block_counts::block_counts () :

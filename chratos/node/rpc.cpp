@@ -468,6 +468,7 @@ void chratos::rpc_handler::account_info ()
 			response_l.put ("frontier", info.head.to_string ());
 			response_l.put ("open_block", info.open_block.to_string ());
 			response_l.put ("representative_block", info.rep_block.to_string ());
+      response_l.put ("dividend_block", info.dividend_block.to_string ());
 			std::string balance;
 			chratos::uint128_union (info.balance).encode_dec (balance);
 			response_l.put ("balance", balance);

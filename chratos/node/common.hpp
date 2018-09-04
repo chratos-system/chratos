@@ -165,7 +165,7 @@ public:
 	void block_type_set (chratos::block_type);
 	bool ipv4_only ();
 	void ipv4_only_set (bool);
-	static std::array<uint8_t, 2> constexpr magic_number = chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? std::array<uint8_t, 2>{ { 'R', 'A' } } : chratos::chratos_network == chratos::chratos_networks::chratos_beta_network ? std::array<uint8_t, 2>{ { 'R', 'B' } } : std::array<uint8_t, 2>{ { 'R', 'C' } };
+	static std::array<uint8_t, 2> constexpr magic_number = chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? std::array<uint8_t, 2>{ { 'C', 'A' } } : chratos::chratos_network == chratos::chratos_networks::chratos_beta_network ? std::array<uint8_t, 2>{ { 'C', 'B' } } : std::array<uint8_t, 2>{ { 'C', 'C' } };
 	uint8_t version_max;
 	uint8_t version_using;
 	uint8_t version_min;
