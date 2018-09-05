@@ -151,10 +151,11 @@ epoch (chratos::epoch::epoch_0)
 {
 }
 
-chratos::account_info::account_info (chratos::block_hash const & head_a, chratos::block_hash const & rep_block_a, chratos::block_hash const & open_block_a, chratos::amount const & balance_a, uint64_t modified_a, uint64_t block_count_a, chratos::epoch epoch_a) :
+chratos::account_info::account_info (chratos::block_hash const & head_a, chratos::block_hash const & rep_block_a, chratos::block_hash const & open_block_a, chratos::block_hash const & dividend_block_a, chratos::amount const & balance_a, uint64_t modified_a, uint64_t block_count_a, chratos::epoch epoch_a) :
 head (head_a),
 rep_block (rep_block_a),
 open_block (open_block_a),
+dividend_block (dividend_block_a),
 balance (balance_a),
 modified (modified_a),
 block_count (block_count_a),

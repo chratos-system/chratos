@@ -462,7 +462,7 @@ void chratos::block_store::initialize (MDB_txn * transaction_a, chratos::genesis
 	assert (latest_v0_begin (transaction_a) == latest_v0_end ());
 	assert (latest_v1_begin (transaction_a) == latest_v1_end ());
 	block_put (transaction_a, hash_l, *genesis_a.open);
-	account_put (transaction_a, genesis_account, { hash_l, genesis_a.open->hash (), genesis_a.open->hash (), std::numeric_limits<chratos::uint128_t>::max (), chratos::seconds_since_epoch (), 1, chratos::epoch::epoch_0 });
+	account_put (transaction_a, genesis_account, { hash_l, genesis_a.open->hash (), genesis_a.open->hash (), 0,  /*std::numeric_limits<chratos::uint128_t>::max ()*/1000, chratos::seconds_since_epoch (), 1, chratos::epoch::epoch_0 });
 	representation_put (transaction_a, genesis_account, std::numeric_limits<chratos::uint128_t>::max ());
 	checksum_put (transaction_a, 0, 0, hash_l);
 	frontier_put (transaction_a, hash_l, genesis_account);
@@ -663,7 +663,7 @@ void chratos::block_store::upgrade_v5_to_v6 (MDB_txn * transaction_a)
 			assert (block != nullptr);
 			hash = block->previous ();
 		}
-		chratos::account_info info (info_old.head, info_old.rep_block, info_old.open_block, info_old.balance, info_old.modified, block_count, chratos::epoch::epoch_0);
+		chratos::account_info info (info_old.head, info_old.rep_block, info_old.open_block, 0, info_old.balance, info_old.modified, block_count, chratos::epoch::epoch_0);
 		headers.push_back (std::make_pair (account, info));
 	}
 	for (auto i (headers.begin ()), n (headers.end ()); i != n; ++i)

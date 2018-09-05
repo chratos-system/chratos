@@ -62,7 +62,7 @@ class account_info
 public:
 	account_info ();
 	account_info (chratos::account_info const &) = default;
-	account_info (chratos::block_hash const &, chratos::block_hash const &, chratos::block_hash const &, chratos::amount const &, uint64_t, uint64_t, epoch);
+	account_info (chratos::block_hash const &, chratos::block_hash const &, chratos::block_hash const &, chratos::block_hash const &, chratos::amount const &, uint64_t, uint64_t, epoch);
 	void serialize (chratos::stream &) const;
 	bool deserialize (chratos::stream &);
 	bool operator== (chratos::account_info const &) const;
