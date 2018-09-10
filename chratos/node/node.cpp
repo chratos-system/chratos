@@ -921,8 +921,8 @@ lmdb_max_dbs (128)
 			break;
 		case chratos::chratos_networks::chratos_beta_network:
 			preconfigured_representatives.push_back (chratos::genesis_account);
+			preconfigured_peers.push_back ("chratos-beta.vidaru.org");
       /*
-			preconfigured_peers.push_back ("chratos-beta.chratosblocks.net");
 			preconfigured_representatives.push_back (chratos::account ("A59A47CC4F593E75AE9AD653FDA9358E2F7898D9ACC8C60E80D0495CE20FBA9F"));
 			preconfigured_representatives.push_back (chratos::account ("259A4011E6CAD1069A97C02C3C1F2AAA32BC093C8D82EE1334F937A4BE803071"));
 			preconfigured_representatives.push_back (chratos::account ("259A40656144FAA16D2A8516F7BE9C74A63C6CA399960EDB747D144ABB0F7ABD"));
