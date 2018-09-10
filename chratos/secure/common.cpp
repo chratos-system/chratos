@@ -944,7 +944,6 @@ chratos::genesis::genesis ()
 	boost::property_tree::ptree tree;
 	std::stringstream istream (chratos::genesis_block);
 	boost::property_tree::read_json (istream, tree);
-  std::cout << chratos::genesis_block << std::endl;
 	auto block (chratos::deserialize_block_json (tree));
 	assert (dynamic_cast<chratos::open_block *> (block.get ()) != nullptr);
 	open.reset (static_cast<chratos::open_block *> (block.release ()));
