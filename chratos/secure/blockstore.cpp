@@ -413,6 +413,7 @@ environment (error_a, path_a, lmdb_max_dbs),
 frontiers (0),
 accounts_v0 (0),
 accounts_v1 (0),
+dividends_ledger (0),
 send_blocks (0),
 receive_blocks (0),
 open_blocks (0),
@@ -434,6 +435,7 @@ meta (0)
 		error_a |= mdb_dbi_open (transaction, "frontiers", MDB_CREATE, &frontiers) != 0;
 		error_a |= mdb_dbi_open (transaction, "accounts", MDB_CREATE, &accounts_v0) != 0;
 		error_a |= mdb_dbi_open (transaction, "accounts_v1", MDB_CREATE, &accounts_v1) != 0;
+    error_a |= mdb_dbi_open (transaction, "dividends_ledger", MDB_CREATE, &dividends_ledger) != 0;
 		error_a |= mdb_dbi_open (transaction, "send", MDB_CREATE, &send_blocks) != 0;
 		error_a |= mdb_dbi_open (transaction, "receive", MDB_CREATE, &receive_blocks) != 0;
 		error_a |= mdb_dbi_open (transaction, "open", MDB_CREATE, &open_blocks) != 0;
@@ -462,10 +464,11 @@ void chratos::block_store::initialize (MDB_txn * transaction_a, chratos::genesis
 	assert (latest_v0_begin (transaction_a) == latest_v0_end ());
 	assert (latest_v1_begin (transaction_a) == latest_v1_end ());
 	block_put (transaction_a, hash_l, *genesis_a.open);
-	account_put (transaction_a, genesis_account, { hash_l, genesis_a.open->hash (), genesis_a.open->hash (), 0,  /*std::numeric_limits<chratos::uint128_t>::max ()*/1000, chratos::seconds_since_epoch (), 1, chratos::epoch::epoch_0 });
+	account_put (transaction_a, genesis_account, { hash_l, genesis_a.open->hash (), genesis_a.open->hash (), 0,  std::numeric_limits<chratos::uint128_t>::max (), chratos::seconds_since_epoch (), 1, chratos::epoch::epoch_0 });
 	representation_put (transaction_a, genesis_account, std::numeric_limits<chratos::uint128_t>::max ());
 	checksum_put (transaction_a, 0, 0, hash_l);
 	frontier_put (transaction_a, hash_l, genesis_account);
+  dividend_put (transaction_a, dividend_info());
 }
 
 void chratos::block_store::version_put (MDB_txn * transaction_a, int version_a)
@@ -614,7 +617,7 @@ void chratos::block_store::upgrade_v3_to_v4 (MDB_txn * transaction_a)
 	{
 		chratos::block_hash hash (i->first);
 		chratos::pending_info_v3 info (i->second);
-		items.push (std::make_pair (chratos::pending_key (info.destination, hash), chratos::pending_info (info.source, info.amount, chratos::epoch::epoch_0)));
+		items.push (std::make_pair (chratos::pending_key (info.destination, hash), chratos::pending_info (info.source, info.amount, chratos::uint256_union (0), chratos::epoch::epoch_0)));
 	}
 	mdb_drop (transaction_a, pending_v0, 0);
 	while (!items.empty ())
@@ -1169,6 +1172,21 @@ bool chratos::block_store::account_get (MDB_txn * transaction_a, chratos::accoun
 	return result;
 }
 
+chratos::dividend_info chratos::block_store::dividend_get (MDB_txn * transaction_a) 
+{
+	chratos::mdb_val value;
+  const chratos::uint256_union zero (0);
+	auto status1 (mdb_get (transaction_a, dividends_ledger, chratos::mdb_val (zero), value));
+	assert (status1 == 0 || status1 == MDB_NOTFOUND);
+
+  chratos::bufferstream stream (reinterpret_cast<uint8_t const *> (value.data ()), value.size ());
+  chratos::dividend_info info_l;
+  info_l.epoch = chratos::epoch::epoch_1;
+  info_l.deserialize (stream);
+
+  return info_l;
+}
+
 void chratos::block_store::frontier_put (MDB_txn * transaction_a, chratos::block_hash const & block_a, chratos::account const & account_a)
 {
 	auto status (mdb_put (transaction_a, frontiers, chratos::mdb_val (block_a), chratos::mdb_val (account_a), 0));
@@ -1223,6 +1241,14 @@ void chratos::block_store::account_put (MDB_txn * transaction_a, chratos::accoun
 	}
 	auto status (mdb_put (transaction_a, db, chratos::mdb_val (account_a), chratos::mdb_val (info_a), 0));
 	assert (status == 0);
+}
+
+void chratos::block_store::dividend_put (MDB_txn * transaction_a, chratos::dividend_info const & info_a)
+{
+  MDB_dbi db = dividends_ledger;
+  const chratos::uint256_union zero (0);
+  auto status (mdb_put (transaction_a, db, chratos::mdb_val (zero), chratos::mdb_val (info_a), 0));
+  assert (status == 0);
 }
 
 void chratos::block_store::pending_put (MDB_txn * transaction_a, chratos::pending_key const & key_a, chratos::pending_info const & pending_a)

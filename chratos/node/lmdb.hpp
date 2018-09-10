@@ -33,6 +33,7 @@ public:
 	};
 	mdb_val (chratos::epoch = chratos::epoch::unspecified);
 	mdb_val (chratos::account_info const &);
+  mdb_val (chratos::dividend_info const &);
 	mdb_val (chratos::block_info const &);
 	mdb_val (MDB_val const &, chratos::epoch = chratos::epoch::unspecified);
 	mdb_val (chratos::pending_info const &);
@@ -45,6 +46,7 @@ public:
 	void * data () const;
 	size_t size () const;
 	explicit operator chratos::account_info () const;
+	explicit operator chratos::dividend_info () const;
 	explicit operator chratos::block_info () const;
 	explicit operator chratos::pending_info () const;
 	explicit operator chratos::pending_key () const;

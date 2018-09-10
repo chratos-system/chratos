@@ -297,18 +297,18 @@ if (RAIBLOCKS_GUI)
 
 	qt5_add_resources(RES resources.qrc)
 
-	add_executable (nano_wallet ${PLATFORM_GUI_TARGET_PROPERTIES}
+	add_executable (chratos_wallet ${PLATFORM_GUI_TARGET_PROPERTIES}
 		${PLATFORM_WALLET_SOURCE}
 		chratos/chratos_wallet/entry.cpp
 		chratos/chratos_wallet/icon.hpp
 		${RES})
 
-	target_link_libraries (nano_wallet
+	target_link_libraries (chratos_wallet
 		node
 		qt)
 
 	if (WIN32)
-		target_link_libraries (nano_wallet Qt5::WinExtras)
+		target_link_libraries (chratos_wallet Qt5::WinExtras)
 	endif()
 
 	add_executable (qt_system
@@ -316,7 +316,7 @@ if (RAIBLOCKS_GUI)
 
 	target_link_libraries (qt_system qt node Qt5::Gui Qt5::Widgets)
 
-	set_target_properties (qt nano_wallet qt_system PROPERTIES COMPILE_FLAGS "-DQT_NO_KEYWORDS -DBOOST_ASIO_HAS_STD_ARRAY=1")
+	set_target_properties (qt chratos_wallet qt_system PROPERTIES COMPILE_FLAGS "-DQT_NO_KEYWORDS -DBOOST_ASIO_HAS_STD_ARRAY=1")
 
 	if (RAIBLOCKS_TEST)
 		add_executable (qt_test
@@ -329,7 +329,7 @@ if (RAIBLOCKS_GUI)
 	endif ()
 
 	if (APPLE)
-		install (TARGETS nano_wallet DESTINATION Chratos.app/Contents/MacOS)
+		install (TARGETS chratos_wallet DESTINATION Chratos.app/Contents/MacOS)
 		install (FILES Info.plist DESTINATION Chratos.app/Contents)
 		install (FILES qt.conf DESTINATION Chratos.app/Contents/Resources)
 		install (DIRECTORY ${Qt5_DIR}/../../QtCore.framework DESTINATION Chratos.app/Contents/Frameworks)
@@ -356,7 +356,7 @@ if (RAIBLOCKS_GUI)
 		set (CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 		get_target_property (Qt5WindowsPlugin Qt5::QWindowsIntegrationPlugin LOCATION)
 		get_filename_component (Qt5_bin_DIR ${Qt5_DIR}/../../../bin ABSOLUTE)
-		install (TARGETS nano_wallet DESTINATION .)
+		install (TARGETS chratos_wallet DESTINATION .)
 		install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${WIN_REDIST} DESTINATION .)
 		install (FILES ${Qt5_bin_DIR}/libGLESv2.dll DESTINATION .)
 		install (FILES ${Qt5_bin_DIR}/Qt5Core.dll DESTINATION .)
@@ -365,7 +365,7 @@ if (RAIBLOCKS_GUI)
 		install (FILES ${Qt5_bin_DIR}/Qt5WinExtras.dll DESTINATION .)
 		install (FILES ${Qt5WindowsPlugin} DESTINATION platforms)
 	else ()
-		install(TARGETS nano_wallet
+		install(TARGETS chratos_wallet
 				RUNTIME DESTINATION bin
 				LIBRARY DESTINATION lib
 				ARCHIVE DESTINATION lib

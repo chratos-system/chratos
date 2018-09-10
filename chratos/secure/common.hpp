@@ -80,19 +80,42 @@ public:
 };
 
 /**
+ * Information about the dividend chain
+ */
+class dividend_info
+{
+public:
+  dividend_info ();
+  dividend_info (chratos::dividend_info const &) = default;
+	dividend_info (chratos::block_hash const &, chratos::amount const &, uint64_t, uint64_t, epoch);
+  void serialize (chratos::stream &) const;
+	bool deserialize (chratos::stream &);
+	bool operator== (chratos::dividend_info const &) const;
+	bool operator!= (chratos::dividend_info const &) const;
+	size_t db_size () const;
+	chratos::block_hash head;
+	chratos::amount balance;
+	/** Seconds since posix epoch */
+	uint64_t modified;
+	uint64_t block_count;
+	chratos::epoch epoch;
+};
+
+/**
  * Information on an uncollected send
  */
 class pending_info
 {
 public:
 	pending_info ();
-	pending_info (chratos::account const &, chratos::amount const &, epoch);
+	pending_info (chratos::account const &, chratos::amount const &, chratos::block_hash const &, epoch);
 	void serialize (chratos::stream &) const;
 	bool deserialize (chratos::stream &);
 	bool operator== (chratos::pending_info const &) const;
 	chratos::account source;
 	chratos::amount amount;
 	chratos::epoch epoch;
+  chratos::block_hash dividend;
 };
 class pending_key
 {
@@ -104,6 +127,14 @@ public:
 	bool operator== (chratos::pending_key const &) const;
 	chratos::account account;
 	chratos::block_hash hash;
+};
+class pending_dividend_info
+{
+public:
+  pending_dividend_info ();
+};
+class pending_dividend_key
+{
 };
 class block_info
 {

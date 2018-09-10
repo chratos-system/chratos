@@ -150,6 +150,7 @@ public:
 	void delegators ();
 	void delegators_count ();
 	void deterministic_key ();
+  void dividend_info ();
 	void frontiers ();
 	void history ();
 	void keepalive ();
@@ -168,6 +169,7 @@ public:
 	void payment_wait ();
 	void peers ();
 	void pending ();
+  void pending_dividends ();
 	void pending_exists ();
 	void process ();
 	void receive ();

@@ -2798,11 +2798,12 @@ namespace
 class confirmed_visitor : public chratos::block_visitor
 {
 public:
-	confirmed_visitor (MDB_txn * transaction_a, chratos::node & node_a, std::shared_ptr<chratos::block> block_a, chratos::block_hash const & hash_a) :
+	confirmed_visitor (MDB_txn * transaction_a, chratos::node & node_a, std::shared_ptr<chratos::block> block_a, chratos::block_hash const & hash_a, chratos::block_hash const & dividend_a) :
 	transaction (transaction_a),
 	node (node_a),
 	block (block_a),
-	hash (hash_a)
+	hash (hash_a),
+  dividend (dividend_a)
 	{
 	}
 	virtual ~confirmed_visitor () = default;
@@ -2862,6 +2863,7 @@ public:
 	chratos::node & node;
 	std::shared_ptr<chratos::block> block;
 	chratos::block_hash const & hash;
+  chratos::block_hash const & dividend;
 };
 }
 
@@ -2878,8 +2880,9 @@ void chratos::node::process_confirmed (std::shared_ptr<chratos::block> block_a)
 	}
 	if (exists)
 	{
+    auto dividend (block_a->dividend ());
 		chratos::transaction transaction (store.environment, nullptr, false);
-		confirmed_visitor visitor (transaction, *this, block_a, hash);
+		confirmed_visitor visitor (transaction, *this, block_a, hash, dividend);
 		block_a->visit (visitor);
 		auto account (ledger.account (transaction, hash));
 		auto amount (ledger.amount (transaction, hash));

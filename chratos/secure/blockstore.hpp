@@ -155,7 +155,6 @@ public:
 	bool block_exists (MDB_txn *, chratos::block_hash const &);
 	chratos::block_counts block_count (MDB_txn *);
 	bool root_exists (MDB_txn *, chratos::uint256_union const &);
-  chratos::block_hash dividend_get ();
 
 	void frontier_put (MDB_txn *, chratos::block_hash const &, chratos::account const &);
 	chratos::account frontier_get (MDB_txn *, chratos::block_hash const &);
@@ -175,6 +174,9 @@ public:
 	chratos::store_iterator<chratos::account, chratos::account_info> latest_begin (MDB_txn *, chratos::account const &);
 	chratos::store_iterator<chratos::account, chratos::account_info> latest_begin (MDB_txn *);
 	chratos::store_iterator<chratos::account, chratos::account_info> latest_end ();
+
+  void dividend_put (MDB_txn *, chratos::dividend_info const &);
+  chratos::dividend_info dividend_get (MDB_txn *);
 
 	void pending_put (MDB_txn *, chratos::pending_key const &, chratos::pending_info const &);
 	void pending_del (MDB_txn *, chratos::pending_key const &);
@@ -276,6 +278,11 @@ public:
 	 * chratos::account -> chratos::block_hash, chratos::block_hash, chratos::block_hash, chratos::amount, uint64_t, uint64_t
 	 */
 	MDB_dbi accounts_v1;
+
+  /**
+   * Maps the dividend ledger
+   */
+  MDB_dbi dividends_ledger;
 
 	/**
 	 * Maps block hash to send block.

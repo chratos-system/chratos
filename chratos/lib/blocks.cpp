@@ -1370,7 +1370,7 @@ std::unique_ptr<chratos::block> chratos::deserialize_block (chratos::stream & st
       break;
     }
     default:
-      assert (false);
+      //assert (false);
       break;
   }
   return result;

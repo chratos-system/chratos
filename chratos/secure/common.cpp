@@ -226,6 +226,70 @@ size_t chratos::account_info::db_size () const
 	return sizeof (head) + sizeof (rep_block) + sizeof (open_block) + sizeof (dividend_block) + sizeof (balance) + sizeof (modified) + sizeof (block_count);
 }
 
+chratos::dividend_info::dividend_info () :
+head (0),
+balance (0),
+modified (0),
+block_count (0),
+epoch (chratos::epoch::epoch_1)
+{
+}
+
+chratos::dividend_info::dividend_info (chratos::block_hash const & head_a, chratos::amount const & balance_a, uint64_t modified_a, uint64_t block_count_a, chratos::epoch epoch_a) :
+head (head_a),
+balance (balance_a),
+modified (modified_a),
+block_count (block_count_a),
+epoch (epoch_a)
+{
+}
+
+void chratos::dividend_info::serialize (chratos::stream & stream_a) const
+{
+	write (stream_a, head.bytes);
+	write (stream_a, balance.bytes);
+	write (stream_a, modified);
+	write (stream_a, block_count);
+}
+
+bool chratos::dividend_info::deserialize (chratos::stream & stream_a)
+{
+  auto error (read (stream_a, head.bytes));
+	if (!error)
+	{
+    error = read (stream_a, balance.bytes);
+    if (!error)
+    {
+      error = read (stream_a, modified);
+      if (!error)
+      {
+        error = read (stream_a, block_count);
+      }
+    }
+	}
+	return error;
+}
+
+bool chratos::dividend_info::operator== (chratos::dividend_info const & other_a) const
+{
+
+	return head == other_a.head && balance == other_a.balance && modified == other_a.modified && block_count == other_a.block_count && epoch == other_a.epoch;
+}
+
+bool chratos::dividend_info::operator!= (chratos::dividend_info const & other_a) const
+{
+	return !(*this == other_a);
+}
+
+size_t chratos::dividend_info::db_size () const
+{
+	assert (reinterpret_cast<const uint8_t *> (this) == reinterpret_cast<const uint8_t *> (&head));
+	assert (reinterpret_cast<const uint8_t *> (&head) + sizeof (head) == reinterpret_cast<const uint8_t *> (&balance));
+	assert (reinterpret_cast<const uint8_t *> (&balance) + sizeof (balance) == reinterpret_cast<const uint8_t *> (&modified));
+	assert (reinterpret_cast<const uint8_t *> (&modified) + sizeof (modified) == reinterpret_cast<const uint8_t *> (&block_count));
+	return sizeof (head) + sizeof (balance) + sizeof (modified) + sizeof (block_count);
+}
+
 chratos::block_counts::block_counts () :
 send (0),
 receive (0),
@@ -244,13 +308,15 @@ size_t chratos::block_counts::sum ()
 chratos::pending_info::pending_info () :
 source (0),
 amount (0),
+dividend (0),
 epoch (chratos::epoch::epoch_0)
 {
 }
 
-chratos::pending_info::pending_info (chratos::account const & source_a, chratos::amount const & amount_a, chratos::epoch epoch_a) :
+chratos::pending_info::pending_info (chratos::account const & source_a, chratos::amount const & amount_a, chratos::block_hash const & dividend_a, chratos::epoch epoch_a) :
 source (source_a),
 amount (amount_a),
+dividend (dividend_a),
 epoch (epoch_a)
 {
 }
@@ -259,6 +325,7 @@ void chratos::pending_info::serialize (chratos::stream & stream_a) const
 {
 	chratos::write (stream_a, source.bytes);
 	chratos::write (stream_a, amount.bytes);
+	chratos::write (stream_a, dividend.bytes);
 }
 
 bool chratos::pending_info::deserialize (chratos::stream & stream_a)
@@ -267,13 +334,17 @@ bool chratos::pending_info::deserialize (chratos::stream & stream_a)
 	if (!result)
 	{
 		result = chratos::read (stream_a, amount.bytes);
+    if (!result)
+    {
+      result = chratos::read (stream_a, dividend.bytes);
+    }
 	}
 	return result;
 }
 
 bool chratos::pending_info::operator== (chratos::pending_info const & other_a) const
 {
-	return source == other_a.source && amount == other_a.amount && epoch == other_a.epoch;
+	return source == other_a.source && amount == other_a.amount && dividend == other_a.dividend && epoch == other_a.epoch;
 }
 
 chratos::pending_key::pending_key () :

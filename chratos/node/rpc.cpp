@@ -1473,6 +1473,16 @@ void chratos::rpc_handler::deterministic_key ()
 	response_errors ();
 }
 
+void chratos::rpc_handler::dividend_info () 
+{
+  chratos::transaction transaction (node.store.environment, nullptr, false);
+  auto info = node.store.dividend_get (transaction);
+  response_l.put ("head", info.head.to_string());
+  response_l.put ("count", std::to_string(info.block_count));
+  response_l.put ("paid", info.balance.to_string());
+  response_errors ();
+}
+
 void chratos::rpc_handler::frontiers ()
 {
 	auto start (account_impl ());
@@ -2030,6 +2040,9 @@ void chratos::rpc_handler::pending ()
 	response_errors ();
 }
 
+void chratos::rpc_handler::pending_dividends () {
+}
+
 void chratos::rpc_handler::pending_exists ()
 {
 	auto hash (hash_impl ());
@@ -2041,6 +2054,7 @@ void chratos::rpc_handler::pending_exists ()
 		{
 			auto exists (false);
 			auto destination (node.ledger.block_destination (transaction, *block));
+      auto dividend (block->dividend ());
 			if (!destination.is_zero ())
 			{
 				exists = node.store.pending_exists (transaction, chratos::pending_key (destination, hash));
@@ -3823,6 +3837,10 @@ void chratos::rpc_handler::process_request ()
 			{
 				confirmation_history ();
 			}
+      else if (action == "dividend_info")
+      {
+        dividend_info ();
+      }
 			else if (action == "frontiers")
 			{
 				frontiers ();

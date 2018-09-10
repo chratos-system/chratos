@@ -78,6 +78,11 @@ mdb_val (val_a.db_size (), const_cast<chratos::account_info *> (&val_a))
 {
 }
 
+chratos::mdb_val::mdb_val (chratos::dividend_info const & val_a) :
+mdb_val (val_a.db_size (), const_cast<chratos::dividend_info *> (&val_a))
+{
+}
+
 chratos::mdb_val::mdb_val (chratos::pending_info const & val_a) :
 mdb_val (sizeof (val_a.source) + sizeof (val_a.amount), const_cast<chratos::pending_info *> (&val_a))
 {
@@ -120,6 +125,15 @@ chratos::mdb_val::operator chratos::account_info () const
 	assert (value.mv_size == result.db_size ());
 	std::copy (reinterpret_cast<uint8_t const *> (value.mv_data), reinterpret_cast<uint8_t const *> (value.mv_data) + result.db_size (), reinterpret_cast<uint8_t *> (&result));
 	return result;
+}
+
+chratos::mdb_val::operator chratos::dividend_info () const
+{
+  chratos::dividend_info result;
+  result.epoch = epoch;
+  assert (value.mv_size == result.db_size ());
+	std::copy (reinterpret_cast<uint8_t const *> (value.mv_data), reinterpret_cast<uint8_t const *> (value.mv_data) + result.db_size (), reinterpret_cast<uint8_t *> (&result));
+  return result;
 }
 
 chratos::mdb_val::operator chratos::block_info () const
