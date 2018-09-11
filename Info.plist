@@ -7,14 +7,14 @@
 	<key>NSHighResolutionCapable</key>
 	<string>True</string>
 	<key>CFBundleExecutable</key>
-	<string>nano_wallet</string>
+	<string>chratos_wallet</string>
 	<key>CFBundleName</key>
-	<string>Nano</string>
+	<string>Chratos</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleIconFile</key>
-	<string>RaiBlocks.icns</string>
+	<string>Chratos.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>net.raiblocks.rai_wallet</string>
+	<string>io.chratos.chratos_wallet</string>
 </dict>
 </plist>
