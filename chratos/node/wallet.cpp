@@ -1043,10 +1043,13 @@ std::shared_ptr<chratos::block> chratos::wallet::send_action (chratos::account c
 						auto error2 (store.fetch (transaction, source_a, prv));
 						assert (!error2);
 						std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, info.rep_block);
+
+            chratos::dividend_info div_info (node.ledger.store.dividend_get (transaction));
+
 						assert (rep_block != nullptr);
 						uint64_t cached_work (0);
 						store.work_get (transaction, source_a, cached_work);
-						block.reset (new chratos::state_block (source_a, info.head, rep_block->representative (), balance - amount_a, account_a, info.dividend_block, prv, source_a, cached_work));
+						block.reset (new chratos::state_block (source_a, info.head, rep_block->representative (), balance - amount_a, account_a, div_info.head, prv, source_a, cached_work));
 						if (id_mdb_val && block != nullptr)
 						{
 							auto status (mdb_put (transaction, node.wallets.send_action_ids, *id_mdb_val, chratos::mdb_val (block->hash ()), 0));
@@ -1124,11 +1127,14 @@ std::shared_ptr<chratos::block> chratos::wallet::pay_dividend_action (chratos::a
 						chratos::raw_key prv;
 						auto error2 (store.fetch (transaction, source_a, prv));
 						assert (!error2);
+
+            chratos::dividend_info div_info (node.ledger.store.dividend_get (transaction));
+
 						std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, info.rep_block);
 						assert (rep_block != nullptr);
 						uint64_t cached_work (0);
 						store.work_get (transaction, source_a, cached_work);
-						block.reset (new chratos::state_block (source_a, info.head, rep_block->representative (), balance - amount_a, info.dividend_block, info.dividend_block, prv, source_a, cached_work));
+						block.reset (new chratos::state_block (source_a, info.head, rep_block->representative (), balance - amount_a, div_info.head, div_info.head, prv, source_a, cached_work));
 						if (id_mdb_val && block != nullptr)
 						{
 							auto status (mdb_put (transaction, node.wallets.pay_dividend_action_ids, *id_mdb_val, chratos::mdb_val (block->hash ()), 0));
@@ -1157,7 +1163,6 @@ std::shared_ptr<chratos::block> chratos::wallet::pay_dividend_action (chratos::a
 		}
 	}
 	return block;
-
 }
 
 bool chratos::wallet::change_sync (chratos::account const & source_a, chratos::account const & representative_a)

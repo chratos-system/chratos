@@ -2041,6 +2041,35 @@ void chratos::rpc_handler::pending ()
 }
 
 void chratos::rpc_handler::pending_dividends () {
+	auto account (account_impl ());
+	if (!ec)
+	{
+		boost::property_tree::ptree peers_l;
+		chratos::transaction transaction (node.store.environment, nullptr, false);
+    chratos::dividend_info div_info (node.store.dividend_get (transaction));
+    chratos::account_info info;
+    if (!node.store.account_get (transaction, account, info))
+    {
+      chratos::block_hash current = div_info.head;
+      boost::property_tree::ptree entry;
+
+      while (current != chratos::uint256_union (0))
+      {
+        entry.put ("", current.to_string ());
+        peers_l.push_back (std::make_pair ("", entry));
+        auto block (node.store.block_get (transaction, current)); 
+        current = block->dividend ();
+      }
+    }
+    else
+    {
+			ec = nano::error_common::account_not_found;
+    }
+
+    response_l.add_child ("blocks", peers_l);
+  }
+
+  response_errors ();
 }
 
 void chratos::rpc_handler::pending_exists ()
@@ -3926,6 +3955,10 @@ void chratos::rpc_handler::process_request ()
 			{
 				pending ();
 			}
+      else if (action == "pending_dividends")
+      {
+        pending_dividends ();
+      }
 			else if (action == "pending_exists")
 			{
 				pending_exists ();
