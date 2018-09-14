@@ -741,6 +741,36 @@ bool chratos::ledger::is_send (MDB_txn * transaction_a, chratos::state_block con
   return result;
 }
 
+bool chratos::ledger::is_dividend (MDB_txn * transaction_a, chratos::state_block const & block_a)
+{
+  bool result (false);
+
+  chratos::block_hash dividend (block_a.hashables.dividend);
+  chratos::block_hash link (block_a.hashables.link);
+
+  if (link == dividend) 
+  {
+    result = is_send (transaction_a, block_a);
+  }
+
+  return result;
+}
+
+bool chratos::ledger::is_dividend_claim (MDB_txn * transaction_a, chratos::state_block const & block_a)
+{
+  bool result (false);
+
+  chratos::block_hash dividend (block_a.hashables.dividend);
+  chratos::block_hash link (block_a.hashables.link);
+
+  if (link == dividend)
+  {
+    result = !is_send (transaction_a, block_a);
+  }
+
+  return result;
+}
+
 chratos::block_hash chratos::ledger::block_destination (MDB_txn * transaction_a, chratos::block const & block_a)
 {
   chratos::block_hash result (0);

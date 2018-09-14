@@ -131,6 +131,7 @@ public:
 	std::shared_ptr<chratos::block> receive_action (chratos::block const &, chratos::account const &, chratos::uint128_union const &, bool = true);
 	std::shared_ptr<chratos::block> send_action (chratos::account const &, chratos::account const &, chratos::uint128_t const &, bool = true, boost::optional<std::string> = {});
   std::shared_ptr<chratos::block> pay_dividend_action (chratos::account const &, chratos::uint128_t const &, bool = true, boost::optional<std::string> = {});
+  std::shared_ptr<chratos::block> claim_dividend_action (chratos::block const &, chratos::account const &, chratos::account const &, bool = true);
 	wallet (bool &, chratos::transaction &, chratos::node &, std::string const &);
 	wallet (bool &, chratos::transaction &, chratos::node &, std::string const &, std::string const &);
 	void enter_initial_password ();
@@ -157,6 +158,8 @@ public:
 	void work_update (MDB_txn *, chratos::account const &, chratos::block_hash const &, uint64_t);
 	void work_ensure (chratos::account const &, chratos::block_hash const &);
 	bool search_pending ();
+  uint128_union amount_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
+  bool has_outstanding_pendings_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
 	void init_free_accounts (MDB_txn *);
 	/** Changes the wallet seed and returns the first account */
 	chratos::public_key change_seed (MDB_txn * transaction_a, chratos::raw_key const & prv_a);

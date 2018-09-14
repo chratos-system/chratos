@@ -1165,6 +1165,76 @@ std::shared_ptr<chratos::block> chratos::wallet::pay_dividend_action (chratos::a
 	return block;
 }
 
+std::shared_ptr<chratos::block> chratos::wallet::claim_dividend_action (chratos::block const & dividend_a, chratos::account const & account_a, chratos::account const & representative_a, bool generate_work_a) {
+	auto hash (dividend_a.hash ());
+	std::shared_ptr<chratos::block> block;
+  std::shared_ptr<chratos::block> dividend_block;
+  chratos::account_info account_info;
+
+  chratos::transaction transaction (node.ledger.store.environment, nullptr, false);
+
+  if (node.store.block_exists (transaction, hash))
+  {
+    dividend_block = node.store.block_get (transaction, hash);
+    if (!has_outstanding_pendings_for_dividend (transaction, dividend_block, account_a))
+    {
+      if (!node.ledger.store.account_get (transaction, account_a, account_info))
+      {
+        if (dividend_block->dividend () == account_info.dividend_block)
+        {
+
+          chratos::raw_key prv;
+          if (!store.fetch (transaction, account_a, prv))
+          {
+            chratos::amount amount (amount_for_dividend (transaction, dividend_block, account_a));
+            uint64_t cached_work (0);
+            store.work_get (transaction, account_a, cached_work);
+            chratos::account_info info;
+            std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, info.rep_block);
+            assert (rep_block != nullptr);
+            block.reset (new chratos::state_block (account_a, info.head, rep_block->representative (), info.balance.number () + amount.number (), hash, hash, prv, account_a, cached_work));
+          }
+          else
+          {
+            BOOST_LOG (node.log) << "Unable to receive, wallet locked";
+          }
+        }
+        else
+        {
+          // Ledger doesn't have this marked as available to receive anymore
+        }
+      }
+      else
+      {
+      // We have old unclaimed dividends
+      }
+    }
+    else
+    {
+      // We have unclaimed pendings
+    }
+  }
+  else
+  {
+    // Ledger doesn't have this block anymore.
+  }
+	if (block != nullptr)
+	{
+		if (chratos::work_validate (*block))
+		{
+			node.work_generate_blocking (*block);
+		}
+		node.process_active (block);
+		node.block_processor.flush ();
+		if (generate_work_a)
+		{
+			work_ensure (account_a, block->hash ());
+		}
+	}
+	return block;
+
+}
+
 bool chratos::wallet::change_sync (chratos::account const & source_a, chratos::account const & representative_a)
 {
 	std::promise<bool> result;
@@ -1295,6 +1365,48 @@ bool chratos::wallet::search_pending ()
 		BOOST_LOG (node.log) << "Stopping search, wallet is locked";
 	}
 	return result;
+}
+
+chratos::uint128_union chratos::wallet::amount_for_dividend (MDB_txn * transaction_a, std::shared_ptr<chratos::block> block_a, chratos::account const & account_a)
+{
+  chratos::uint128_union result (0);
+  chratos::account_info account_info;
+  auto dividend_hash (block_a->dividend ());
+  auto previous (node.store.block_get(transaction_a, block_a->previous ()));
+  chratos::state_block const * state_block (dynamic_cast<chratos::state_block const *> (block_a.get ()));
+  chratos::state_block const * previous_block (dynamic_cast<chratos::state_block const *> (previous.get ()));
+
+  if (state_block != nullptr)
+  {
+    if (!node.ledger.store.account_get (transaction_a, account_a, account_info))
+    {
+      chratos::amount balance_at_dividend (account_info.balance);
+      chratos::amount dividend_amount (previous_block->hashables.balance.number () - state_block->hashables.balance.number ());
+
+      chratos::amount total_supply (std::numeric_limits<chratos::uint128_t>::max ());
+
+      auto multiplier (dividend_amount.number () / (total_supply.number () - dividend_amount.number ()));
+
+      result = balance_at_dividend.number () * multiplier;
+    }
+  }
+
+  return result;
+}
+
+bool chratos::wallet::has_outstanding_pendings_for_dividend (MDB_txn * transaction_a, std::shared_ptr<chratos::block> block_a, chratos::account const & account_a) {
+  bool result (false);
+
+  chratos::account end (account_a.number () + 1);
+  for (auto i (node.store.pending_begin (transaction_a, chratos::pending_key (account_a, 0))), n (node.store.pending_begin (transaction_a, chratos::pending_key (end, 0))); i != n && !result; ++i) 
+  {
+    chratos::pending_info info (i->second);
+    if (info.dividend == block_a->dividend ()) {
+      result = true;
+    }
+  }
+
+  return result;
 }
 
 void chratos::wallet::init_free_accounts (MDB_txn * transaction_a)

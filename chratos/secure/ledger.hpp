@@ -35,6 +35,8 @@ public:
 	std::string block_text (char const *);
 	std::string block_text (chratos::block_hash const &);
 	bool is_send (MDB_txn *, chratos::state_block const &);
+	bool is_dividend (MDB_txn *, chratos::state_block const &);
+	bool is_dividend_claim (MDB_txn *, chratos::state_block const &);
 	chratos::block_hash block_destination (MDB_txn *, chratos::block const &);
 	chratos::block_hash block_source (MDB_txn *, chratos::block const &);
 	chratos::process_return process (MDB_txn *, chratos::block const &);
