@@ -1306,6 +1306,22 @@ void chratos::wallet::send_dividend_async (chratos::account const & source_a, ch
   });
 }
 
+bool chratos::wallet::claim_dividend_sync (std::shared_ptr<chratos::block> dividend_a, chratos::account const & account_a, chratos::account const & representative_a) {	
+  std::promise<bool> result;
+	claim_dividend_async (dividend_a, account_a, representative_a, [&result](std::shared_ptr<chratos::block> block_a) {
+		result.set_value (block_a == nullptr);
+	},
+	true);
+	return result.get_future ().get ();
+}
+
+void chratos::wallet::claim_dividend_async (std::shared_ptr<chratos::block> dividend_a, chratos::account const & account_a, chratos::account const & representative_a, std::function<void(std::shared_ptr<chratos::block>)> const & action_a, bool generate_work_a) {
+  node.wallets.queue_wallet_action (chratos::wallets::high_priority, [this, dividend_a, account_a, representative_a, action_a, generate_work_a]() {
+		auto block (claim_dividend_action (*static_cast<chratos::block *> (dividend_a.get ()), account_a, representative_a, generate_work_a));
+		action_a (block);
+	});
+}
+
 // Update work for account if latest root is root_a
 void chratos::wallet::work_update (MDB_txn * transaction_a, chratos::account const & account_a, chratos::block_hash const & root_a, uint64_t work_a)
 {
