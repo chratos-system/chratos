@@ -254,7 +254,7 @@ chratos::mdb_val::operator std::shared_ptr<chratos::vote> () const
 	error = chratos::read (stream, result->sequence);
 	assert (!error);
 	result->blocks.push_back (chratos::deserialize_block (stream));
-	assert (boost::get<std::shared_ptr<chratos::block>> (result->blocks[0]) != nullptr);
+	// assert (boost::get<std::shared_ptr<chratos::block>> (result->blocks[0]) != nullptr);
 	return result;
 }
 

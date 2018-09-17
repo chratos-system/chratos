@@ -1189,10 +1189,9 @@ std::shared_ptr<chratos::block> chratos::wallet::claim_dividend_action (chratos:
             chratos::amount amount (amount_for_dividend (transaction, dividend_block, account_a));
             uint64_t cached_work (0);
             store.work_get (transaction, account_a, cached_work);
-            chratos::account_info info;
-            std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, info.rep_block);
+            std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, account_info.rep_block);
             assert (rep_block != nullptr);
-            block.reset (new chratos::state_block (account_a, info.head, rep_block->representative (), info.balance.number () + amount.number (), hash, hash, prv, account_a, cached_work));
+            block.reset (new chratos::state_block (account_a, account_info.head, rep_block->representative (), account_info.balance.number () + amount.number (), hash, hash, prv, account_a, cached_work));
           }
           else
           {
@@ -1381,6 +1380,55 @@ bool chratos::wallet::search_pending ()
 		BOOST_LOG (node.log) << "Stopping search, wallet is locked";
 	}
 	return result;
+}
+
+std::vector<chratos::account> chratos::wallet::search_unclaimed (chratos::block_hash const & dividend_a)
+{
+	chratos::transaction transaction (store.environment, nullptr, false);
+  auto result = std::vector<chratos::account>();
+	auto error (!store.valid_password (transaction));
+	if (!error)
+	{
+		BOOST_LOG (node.log) << "Beginning unclaimed dividend search for " << dividend_a.to_string();
+		for (auto i (store.begin (transaction)), n (store.end ()); i != n; ++i)
+    {
+			chratos::transaction transaction (node.store.environment, nullptr, false);
+			chratos::account account (i->first);
+      if (!chratos::wallet_value (i->second).key.is_zero ())
+      {
+        auto div_info (node.store.dividend_get (transaction));
+        chratos::account_info info;
+        
+        if (node.store.account_get (transaction, account, info)) 
+        {
+          break;
+        }
+
+        chratos::block_hash current = div_info.head;
+        bool claimed (true);
+        while (current != chratos::uint256_t (0) && claimed)
+        {
+          if (current == info.dividend_block) {
+            break;
+          } else if (current == dividend_a) {
+            claimed = false;
+          }
+          auto block = node.store.block_get (transaction, current);
+          current = block->dividend ();
+        }
+
+        if (!claimed)
+        {
+          result.push_back(account);
+        }
+      }
+    }
+  }
+  else
+  {
+    BOOST_LOG (node.log) << "Stopping search, wallet is locked";
+  }
+  return result;
 }
 
 chratos::uint128_union chratos::wallet::amount_for_dividend (MDB_txn * transaction_a, std::shared_ptr<chratos::block> block_a, chratos::account const & account_a)
@@ -1582,6 +1630,45 @@ void chratos::wallets::search_pending_all ()
 	{
 		i.second->search_pending ();
 	}
+}
+
+std::vector<chratos::account> chratos::wallets::search_unclaimed (chratos::block_hash const & dividend_a)
+{
+  auto unclaimed = std::vector<chratos::account>();
+
+  for (auto i : items)
+  {
+    auto xs = i.second->search_unclaimed (dividend_a);
+    unclaimed.insert (unclaimed.end(), xs.begin(), xs.end());
+  }
+
+  return unclaimed;
+}
+
+std::unordered_map<chratos::block_hash, std::vector<chratos::account>> chratos::wallets::search_unclaimed_all ()
+{
+  std::unordered_map<chratos::block_hash, std::vector<chratos::account>> result;
+
+  std::vector<chratos::block_hash> dividends;
+
+	chratos::transaction transaction (node.store.environment, nullptr, true);
+  chratos::dividend_info div_info (node.store.dividend_get (transaction));
+  chratos::block_hash current_dividend (div_info.head);
+
+  while (current_dividend != chratos::uint256_union (0))
+  {
+    dividends.push_back(current_dividend);
+    auto block = node.store.block_get (transaction, current_dividend);
+    current_dividend = block->dividend ();
+  }
+
+  for (auto & dividend_hash : dividends)
+  {
+    auto unclaimed = search_unclaimed (dividend_hash);
+    result[dividend_hash] = unclaimed;
+  }
+
+  return result;
 }
 
 void chratos::wallets::destroy (chratos::uint256_union const & id_a)

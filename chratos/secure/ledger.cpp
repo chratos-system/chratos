@@ -241,10 +241,7 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
             if (result.code == chratos::process_result::progress)
             {
               is_send = block_a.hashables.balance < info.balance;
-              if (is_send) 
-              {
-                is_dividend = block_a.hashables.dividend == block_a.hashables.link;
-              }
+              is_dividend = block_a.hashables.dividend == block_a.hashables.link;
               result.amount = is_send ? (info.balance.number () - result.amount.number ()) : (result.amount.number () - info.balance.number ());
               result.code = block_a.hashables.previous == info.head ? chratos::process_result::progress : chratos::process_result::fork; // Is the previous block the account's head block? (Ambigious)
             }
@@ -263,7 +260,10 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
         {
           if (!is_send)
           {
-            if (!block_a.hashables.link.is_zero ())
+            if (is_dividend) 
+            {
+            }
+            else if (!block_a.hashables.link.is_zero ())
             {
               result.code = ledger.store.block_exists (transaction, block_a.hashables.link) ? chratos::process_result::progress : chratos::process_result::gap_source; // Have we seen the source block already? (Harmless)
               if (result.code == chratos::process_result::progress)
@@ -327,6 +327,17 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
             const auto time = chratos::seconds_since_epoch ();
             chratos::dividend_info info (hash, balance, time, count, epoch);
             ledger.store.dividend_put (transaction, info);
+          }
+          else if (!is_send && is_dividend)
+          {
+            chratos::account account = block_a.hashables.account;
+            chratos::account_info info;
+
+            ledger.store.account_get (transaction, account, info);
+            info.dividend_block = hash;
+            ledger.store.account_put (transaction, account, info);
+            
+            // TODO - Make sure the hash is not orphaned
           }
           else if (!block_a.hashables.link.is_zero ())
           {

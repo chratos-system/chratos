@@ -180,6 +180,7 @@ public:
 	void republish ();
 	void search_pending ();
 	void search_pending_all ();
+  void search_unclaimed_all ();
 	void send ();
 	void stats ();
 	void stop ();

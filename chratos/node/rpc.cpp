@@ -2711,6 +2711,16 @@ void chratos::rpc_handler::search_pending_all ()
 	response_errors ();
 }
 
+void chratos::rpc_handler::search_unclaimed_all ()
+{
+  rpc_control_impl ();
+  if (!ec)
+  {
+    auto unclaimed (node.wallets.search_unclaimed_all ());
+  }
+  response_errors ();
+}
+
 void chratos::rpc_handler::send ()
 {
 	rpc_control_impl ();
@@ -4007,6 +4017,9 @@ void chratos::rpc_handler::process_request ()
 			{
 				search_pending_all ();
 			}
+      else if (action == "search_unclaimed_all")
+      {
+      }
 			else if (action == "send")
 			{
 				send ();

@@ -160,6 +160,7 @@ public:
 	void work_update (MDB_txn *, chratos::account const &, chratos::block_hash const &, uint64_t);
 	void work_ensure (chratos::account const &, chratos::block_hash const &);
 	bool search_pending ();
+  std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
   uint128_union amount_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
   bool has_outstanding_pendings_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
 	void init_free_accounts (MDB_txn *);
@@ -180,6 +181,8 @@ public:
 	std::shared_ptr<chratos::wallet> create (chratos::uint256_union const &);
 	bool search_pending (chratos::uint256_union const &);
 	void search_pending_all ();
+  std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
+  std::unordered_map<chratos::block_hash, std::vector<chratos::account>> search_unclaimed_all ();
 	void destroy (chratos::uint256_union const &);
 	void do_wallet_actions ();
 	void queue_wallet_action (chratos::uint128_t const &, std::function<void()> const &);
