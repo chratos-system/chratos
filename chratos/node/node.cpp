@@ -2843,6 +2843,7 @@ public:
   {
     if (node.ledger.is_dividend (transaction, block_a))
     {
+      std::shared_ptr<chratos::block> dividend_l = node.store.block_get (transaction, block_a.hash ());
       for (auto i (node.wallets.items.begin ()), n (node.wallets.items.end ()); i != n; ++i)
       {
         auto wallet (i->second);
@@ -2852,11 +2853,40 @@ public:
         
         for (auto & account : accounts)
         {
-          // Check pending
-          // Claim outstanding
-          // Claim dividends
-          wallet->claim_dividend_async (block, account, representative, [](std::shared_ptr<chratos::block>) {});
+          // Check pending and claim outstanding
+          claim_outstanding_pendings (wallet, account, block_a.hash ());
+          // Check dividend points to the account's last claimed
+          chratos::account_info info;
+          node.store.account_get (transaction, account, info);
+          if (info.dividend_block == dividend_l->dividend ()) {
+            // Claim dividends
+            wallet->claim_dividend_async (dividend_l, account, representative, [](std::shared_ptr<chratos::block>) {});
+          } else {
+            // TODO - Claim previous dividend
+          }
         }
+      }
+    }
+  }
+
+  void claim_outstanding_pendings (std::shared_ptr<chratos::wallet> wallet, chratos::account const & account_a, chratos::block_hash const & dividend_a)
+  {
+    const auto div_block = node.ledger.store.block_get (transaction, dividend_a);
+    const auto last_dividend_hash = div_block->dividend ();
+
+    chratos::account representative;
+    representative = wallet->store.representative (transaction);
+
+    for (auto j (node.store.pending_begin (transaction, chratos::pending_key (account_a, 0))), m (node.store.pending_begin (transaction, chratos::pending_key (account_a.number () + 1, 0))); j != m; ++j)
+    {
+      chratos::pending_key key (j->first);
+      chratos::pending_info pending (j->second);
+      if (pending.dividend == last_dividend_hash)
+      {
+        auto hash (key.hash);
+        auto amount (pending.amount.number ());
+        std::shared_ptr<chratos::block> block = node.store.block_get (transaction, hash);
+        wallet->receive_sync (block, representative, amount);
       }
     }
   }

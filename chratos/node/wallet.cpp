@@ -419,7 +419,7 @@ chratos::public_key chratos::wallet_store::insert_adhoc (MDB_txn * transaction_a
 	ciphertext.encrypt (prv, password_l, pub.owords[0].number ());
 	entry_put_raw (transaction_a, pub, chratos::wallet_value (ciphertext, 0));
 	return pub;
-}
+};
 
 void chratos::wallet_store::insert_watch (MDB_txn * transaction_a, chratos::public_key const & pub)
 {
@@ -1182,7 +1182,6 @@ std::shared_ptr<chratos::block> chratos::wallet::claim_dividend_action (chratos:
       {
         if (dividend_block->dividend () == account_info.dividend_block)
         {
-
           chratos::raw_key prv;
           if (!store.fetch (transaction, account_a, prv))
           {
@@ -1205,7 +1204,7 @@ std::shared_ptr<chratos::block> chratos::wallet::claim_dividend_action (chratos:
       }
       else
       {
-      // We have old unclaimed dividends
+        // We have old unclaimed dividends
       }
     }
     else
@@ -1431,31 +1430,9 @@ std::vector<chratos::account> chratos::wallet::search_unclaimed (chratos::block_
   return result;
 }
 
-chratos::uint128_union chratos::wallet::amount_for_dividend (MDB_txn * transaction_a, std::shared_ptr<chratos::block> block_a, chratos::account const & account_a)
+chratos::amount chratos::wallet::amount_for_dividend (MDB_txn * transaction_a, std::shared_ptr<chratos::block> block_a, chratos::account const & account_a)
 {
-  chratos::uint128_union result (0);
-  chratos::account_info account_info;
-  auto dividend_hash (block_a->dividend ());
-  auto previous (node.store.block_get(transaction_a, block_a->previous ()));
-  chratos::state_block const * state_block (dynamic_cast<chratos::state_block const *> (block_a.get ()));
-  chratos::state_block const * previous_block (dynamic_cast<chratos::state_block const *> (previous.get ()));
-
-  if (state_block != nullptr)
-  {
-    if (!node.ledger.store.account_get (transaction_a, account_a, account_info))
-    {
-      chratos::amount balance_at_dividend (account_info.balance);
-      chratos::amount dividend_amount (previous_block->hashables.balance.number () - state_block->hashables.balance.number ());
-
-      chratos::amount total_supply (std::numeric_limits<chratos::uint128_t>::max ());
-
-      auto multiplier (dividend_amount.number () / (total_supply.number () - dividend_amount.number ()));
-
-      result = balance_at_dividend.number () * multiplier;
-    }
-  }
-
-  return result;
+  return node.ledger.amount_for_dividend(transaction_a, block_a->hash (), account_a);
 }
 
 bool chratos::wallet::has_outstanding_pendings_for_dividend (MDB_txn * transaction_a, std::shared_ptr<chratos::block> block_a, chratos::account const & account_a) {
