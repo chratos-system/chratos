@@ -828,6 +828,60 @@ chratos::amount chratos::ledger::amount_for_dividend (MDB_txn * transaction_a, c
   return result;
 }
 
+std::vector<std::shared_ptr<chratos::block>> chratos::ledger::dividend_claim_blocks (MDB_txn * transaction_a, chratos::account const & account_a)
+{
+  chratos::account_info account_info;
+  std::vector<std::shared_ptr<chratos::block>> result;
+
+  if (!store.account_get (transaction_a, account_a, account_info))
+  {
+    chratos::block_hash current = account_info.head;
+
+    while (current != account_a)
+    {
+      std::shared_ptr<chratos::block> block = store.block_get (transaction_a, current);
+      chratos::state_block const * state = dynamic_cast<chratos::state_block const *> (block.get ());
+
+      if (!state) {
+        break;
+      }
+
+      if (is_dividend_claim (transaction_a, *state))
+      {
+        result.push_back(block);
+      }
+      current = block->previous ();
+    }
+  }
+
+  return result;
+}
+
+std::unordered_map<chratos::block_hash, int> chratos::ledger::get_dividend_indexes (MDB_txn * transaction_a)
+{
+  std::unordered_map<chratos::block_hash, int> results;
+
+  auto dividend_info = store.dividend_get (transaction_a);
+  auto current = dividend_info.head;
+  int index (0);
+
+  while (current != chratos::block_hash (0))
+  {
+    std::shared_ptr<chratos::block> block = store.block_get (transaction_a, current);
+    results[current] = index++;
+    current = block->dividend ();
+  }
+
+  const auto count = results.size();
+
+  for (auto & it : results)
+  {
+    it.second = count - it.second;
+  }
+
+  return results;
+}
+
 chratos::block_hash chratos::ledger::block_destination (MDB_txn * transaction_a, chratos::block const & block_a)
 {
   chratos::block_hash result (0);

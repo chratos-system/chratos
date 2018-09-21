@@ -146,6 +146,8 @@ public:
 	void bootstrap ();
 	void bootstrap_any ();
 	void chain (bool = false);
+  void claimed_dividends ();
+  void claim_pending_dividends ();
 	void confirmation_history ();
 	void delegators ();
 	void delegators_count ();

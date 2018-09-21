@@ -2862,7 +2862,11 @@ public:
             // Claim dividends
             wallet->claim_dividend_async (dividend_l, account, representative, [](std::shared_ptr<chratos::block>) {});
           } else {
-            // TODO - Claim previous dividend
+            auto prev_hash = dividend_l->dividend ();
+            std::shared_ptr<chratos::block> previous = node.store.block_get (transaction, prev_hash);
+            chratos::state_block const * prev_dividend (dynamic_cast<chratos::state_block const *> (previous.get ()));
+            check_dividend (*prev_dividend);
+            check_dividend (block_a);
           }
         }
       }
@@ -2871,24 +2875,7 @@ public:
 
   void claim_outstanding_pendings (std::shared_ptr<chratos::wallet> wallet, chratos::account const & account_a, chratos::block_hash const & dividend_a)
   {
-    const auto div_block = node.ledger.store.block_get (transaction, dividend_a);
-    const auto last_dividend_hash = div_block->dividend ();
-
-    chratos::account representative;
-    representative = wallet->store.representative (transaction);
-
-    for (auto j (node.store.pending_begin (transaction, chratos::pending_key (account_a, 0))), m (node.store.pending_begin (transaction, chratos::pending_key (account_a.number () + 1, 0))); j != m; ++j)
-    {
-      chratos::pending_key key (j->first);
-      chratos::pending_info pending (j->second);
-      if (pending.dividend == last_dividend_hash)
-      {
-        auto hash (key.hash);
-        auto amount (pending.amount.number ());
-        std::shared_ptr<chratos::block> block = node.store.block_get (transaction, hash);
-        wallet->receive_sync (block, representative, amount);
-      }
-    }
+    wallet->claim_outstanding_pendings_sync (transaction, account_a, dividend_a);
   }
   void state_block (chratos::state_block const & block_a) override
   {

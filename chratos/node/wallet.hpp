@@ -128,7 +128,7 @@ class wallet : public std::enable_shared_from_this<chratos::wallet>
 {
 public:
 	std::shared_ptr<chratos::block> change_action (chratos::account const &, chratos::account const &, bool = true);
-	std::shared_ptr<chratos::block> receive_action (chratos::block const &, chratos::account const &, chratos::uint128_union const &, bool = true);
+	std::shared_ptr<chratos::block> receive_action (chratos::block const &, chratos::account const &, chratos::uint128_union const &, bool = true, bool = false);
 	std::shared_ptr<chratos::block> send_action (chratos::account const &, chratos::account const &, chratos::uint128_t const &, bool = true, boost::optional<std::string> = {});
   std::shared_ptr<chratos::block> pay_dividend_action (chratos::account const &, chratos::uint128_t const &, bool = true, boost::optional<std::string> = {});
   std::shared_ptr<chratos::block> claim_dividend_action (chratos::block const &, chratos::account const &, chratos::account const &, bool = true);
@@ -147,8 +147,8 @@ public:
 	void serialize (std::string &);
 	bool change_sync (chratos::account const &, chratos::account const &);
 	void change_async (chratos::account const &, chratos::account const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true);
-	bool receive_sync (std::shared_ptr<chratos::block>, chratos::account const &, chratos::uint128_t const &);
-	void receive_async (std::shared_ptr<chratos::block>, chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true);
+	bool receive_sync (std::shared_ptr<chratos::block>, chratos::account const &, chratos::uint128_t const &, bool = false);
+	void receive_async (std::shared_ptr<chratos::block>, chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true, bool = false);
 	chratos::block_hash send_sync (chratos::account const &, chratos::account const &, chratos::uint128_t const &);
 	void send_async (chratos::account const &, chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true, boost::optional<std::string> = {});
 	chratos::block_hash send_dividend_sync (chratos::account const &, chratos::uint128_t const &);
@@ -163,6 +163,7 @@ public:
   std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
   chratos::amount amount_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
   bool has_outstanding_pendings_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
+  void claim_outstanding_pendings_sync (MDB_txn *, chratos::account const &, chratos::block_hash const &);
 	void init_free_accounts (MDB_txn *);
 	/** Changes the wallet seed and returns the first account */
 	chratos::public_key change_seed (MDB_txn * transaction_a, chratos::raw_key const & prv_a);
