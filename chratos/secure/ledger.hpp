@@ -29,6 +29,7 @@ public:
 	std::unique_ptr<chratos::block> forked_block (MDB_txn *, chratos::block const &);
 	chratos::block_hash latest (MDB_txn *, chratos::account const &);
 	chratos::block_hash latest_root (MDB_txn *, chratos::account const &);
+  chratos::block_hash latest_dividend (MDB_txn *);
 	chratos::block_hash representative (MDB_txn *, chratos::block_hash const &);
 	chratos::block_hash representative_calculated (MDB_txn *, chratos::block_hash const &);
 	bool block_exists (chratos::block_hash const &);
@@ -44,7 +45,7 @@ public:
 	chratos::block_hash block_source (MDB_txn *, chratos::block const &);
 	chratos::process_return process (MDB_txn *, chratos::block const &);
 	void rollback (MDB_txn *, chratos::block_hash const &);
-	void change_latest (MDB_txn *, chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::uint128_union const &, uint64_t, bool = false, chratos::epoch = chratos::epoch::epoch_0);
+	void change_latest (MDB_txn *, chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::block_hash const &, chratos::uint128_union const &, uint64_t, bool = false, chratos::epoch = chratos::epoch::epoch_0);
 	void checksum_update (MDB_txn *, chratos::block_hash const &);
 	chratos::checksum checksum (MDB_txn *, chratos::account const &, chratos::account const &);
 	void dump_account_chain (chratos::account const &);

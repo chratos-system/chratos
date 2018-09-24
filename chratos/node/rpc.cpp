@@ -1549,6 +1549,73 @@ void chratos::rpc_handler::dividend_info ()
   response_errors ();
 }
 
+void chratos::rpc_handler::dividends ()
+{
+	chratos::block_hash hash;
+	auto head_str (request.get_optional<std::string> ("head"));
+	chratos::transaction transaction (node.store.environment, nullptr, false);
+	if (head_str)
+	{
+		if (hash.decode_hex (*head_str))
+		{
+			ec = nano::error_blocks::bad_hash_number;
+		}
+	}
+	else
+	{
+    hash = node.ledger.latest_dividend (transaction);
+	}
+	auto count (count_impl ());
+	if (!ec)
+	{
+		uint64_t offset = 0;
+		auto offset_text (request.get_optional<std::string> ("offset"));
+		if (!offset_text || !decode_unsigned (*offset_text, offset))
+		{
+			boost::property_tree::ptree history;
+			auto block (node.store.block_get (transaction, hash));
+			while (block != nullptr && count > 0)
+			{
+				if (offset > 0)
+				{
+					--offset;
+				}
+				else
+				{
+					boost::property_tree::ptree entry;
+          chratos::state_block const * state = dynamic_cast<chratos::state_block const *> (block.get());
+
+          if (state == nullptr) { continue; }
+
+          auto balance (state->hashables.balance.number ());
+          auto previous_balance (node.ledger.balance (transaction, state->hashables.previous));
+
+          entry.put ("amount", (previous_balance - balance).convert_to<std::string> ());
+          entry.put ("from", state->hashables.account.to_account ());
+					if (!entry.empty ())
+					{
+						entry.put ("hash", hash.to_string ());
+						history.push_back (std::make_pair ("", entry));
+					}
+					--count;
+				}
+				hash = block->dividend ();
+				block = node.store.block_get (transaction, hash);
+			}
+			response_l.add_child ("dividends", history);
+			if (!hash.is_zero ())
+			{
+				response_l.put ("previous", hash.to_string ());
+			}
+		}
+		else
+		{
+			ec = nano::error_rpc::invalid_offset;
+		}
+	}
+	response_errors ();
+}
+
 void chratos::rpc_handler::frontiers ()
 {
 	auto start (account_impl ());
@@ -3953,6 +4020,10 @@ void chratos::rpc_handler::process_request ()
       else if (action == "dividend_info")
       {
         dividend_info ();
+      }
+      else if (action == "dividends")
+      {
+        dividends ();
       }
 			else if (action == "frontiers")
 			{

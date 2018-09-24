@@ -33,7 +33,7 @@ public:
     assert (!error);
     ledger.store.pending_del (transaction, key);
     ledger.store.representation_add (transaction, ledger.representative (transaction, hash), pending.amount.number ());
-    ledger.change_latest (transaction, pending.source, block_a.hashables.previous, info.rep_block, ledger.balance (transaction, block_a.hashables.previous), info.block_count - 1);
+    ledger.change_latest (transaction, pending.source, block_a.hashables.previous, info.rep_block, block_a.hashables.dividend, ledger.balance (transaction, block_a.hashables.previous), info.block_count - 1);
     ledger.store.block_del (transaction, hash);
     ledger.store.frontier_del (transaction, hash);
     ledger.store.frontier_put (transaction, block_a.hashables.previous, pending.source);
@@ -55,7 +55,7 @@ public:
     auto error (ledger.store.account_get (transaction, destination_account, info));
     assert (!error);
     ledger.store.representation_add (transaction, ledger.representative (transaction, hash), 0 - amount);
-    ledger.change_latest (transaction, destination_account, block_a.hashables.previous, representative, ledger.balance (transaction, block_a.hashables.previous), info.block_count - 1);
+    ledger.change_latest (transaction, destination_account, block_a.hashables.previous, representative, block_a.hashables.dividend, ledger.balance (transaction, block_a.hashables.previous), info.block_count - 1);
     ledger.store.block_del (transaction, hash);
     ledger.store.pending_put (transaction, chratos::pending_key (destination_account, block_a.hashables.source), { source_account, amount, block_a.hashables.dividend, chratos::epoch::epoch_0 });
     ledger.store.frontier_del (transaction, hash);
@@ -74,7 +74,7 @@ public:
     auto destination_account (ledger.account (transaction, hash));
     auto source_account (ledger.account (transaction, block_a.hashables.source));
     ledger.store.representation_add (transaction, ledger.representative (transaction, hash), 0 - amount);
-    ledger.change_latest (transaction, destination_account, 0, 0, 0, 0);
+    ledger.change_latest (transaction, destination_account, 0, 0, block_a.hashables.dividend, 0, 0);
     ledger.store.block_del (transaction, hash);
     ledger.store.pending_put (transaction, chratos::pending_key (destination_account, block_a.hashables.source), { source_account, amount, block_a.hashables.dividend, chratos::epoch::epoch_0 });
     ledger.store.frontier_del (transaction, hash);
@@ -92,7 +92,7 @@ public:
     ledger.store.representation_add (transaction, representative, balance);
     ledger.store.representation_add (transaction, hash, 0 - balance);
     ledger.store.block_del (transaction, hash);
-    ledger.change_latest (transaction, account, block_a.hashables.previous, representative, info.balance, info.block_count - 1);
+    ledger.change_latest (transaction, account, block_a.hashables.previous, representative, block_a.hashables.dividend, info.balance, info.block_count - 1);
     ledger.store.frontier_del (transaction, hash);
     ledger.store.frontier_put (transaction, block_a.hashables.previous, account);
     ledger.store.block_successor_clear (transaction, block_a.hashables.previous);
@@ -143,7 +143,7 @@ public:
 
     assert (!error);
     auto previous_version (ledger.store.block_version (transaction, block_a.hashables.previous));
-    ledger.change_latest (transaction, block_a.hashables.account, block_a.hashables.previous, representative, balance, info.block_count - 1, false, previous_version);
+    ledger.change_latest (transaction, block_a.hashables.account, block_a.hashables.previous, representative, block_a.hashables.dividend, balance, info.block_count - 1, false, previous_version);
 
     auto previous (ledger.store.block_get (transaction, block_a.hashables.previous));
     if (previous != nullptr)
@@ -348,7 +348,7 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
             chratos::account_info info;
 
             ledger.store.account_get (transaction, account, info);
-            info.dividend_block = hash;
+            info.dividend_block = block_a.hashables.dividend;
             ledger.store.account_put (transaction, account, info);
             
             // TODO - Make sure the hash is not orphaned by accepting a hash
@@ -359,7 +359,7 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
             ledger.store.pending_del (transaction, chratos::pending_key (block_a.hashables.account, block_a.hashables.link));
           }
 
-          ledger.change_latest (transaction, block_a.hashables.account, hash, hash, block_a.hashables.balance, info.block_count + 1, true, epoch);
+          ledger.change_latest (transaction, block_a.hashables.account, hash, hash, block_a.hashables.dividend, block_a.hashables.balance, info.block_count + 1, true, epoch);
           if (!ledger.store.frontier_get (transaction, info.head).is_zero ())
           {
             ledger.store.frontier_del (transaction, info.head);
@@ -422,7 +422,7 @@ void ledger_processor::epoch_block_impl (chratos::state_block const & block_a)
               result.account = block_a.hashables.account;
               result.amount = 0;
               ledger.store.block_put (transaction, hash, block_a, 0, chratos::epoch::epoch_1);
-              ledger.change_latest (transaction, block_a.hashables.account, hash, hash, info.balance, info.block_count + 1, true, chratos::epoch::epoch_1);
+              ledger.change_latest (transaction, block_a.hashables.account, hash, hash, block_a.hashables.dividend, info.balance, info.block_count + 1, true, chratos::epoch::epoch_1);
               if (!ledger.store.frontier_get (transaction, info.head).is_zero ())
               {
                 ledger.store.frontier_del (transaction, info.head);
@@ -464,7 +464,7 @@ void ledger_processor::change_block (chratos::change_block const & block_a)
             auto balance (ledger.balance (transaction, block_a.hashables.previous));
             ledger.store.representation_add (transaction, hash, balance);
             ledger.store.representation_add (transaction, info.rep_block, 0 - balance);
-            ledger.change_latest (transaction, account, hash, hash, info.balance, info.block_count + 1);
+            ledger.change_latest (transaction, account, hash, hash, block_a.hashables.dividend, info.balance, info.block_count + 1);
             ledger.store.frontier_del (transaction, block_a.hashables.previous);
             ledger.store.frontier_put (transaction, hash, account);
             result.account = account;
@@ -508,7 +508,7 @@ void ledger_processor::send_block (chratos::send_block const & block_a)
               auto amount (info.balance.number () - block_a.hashables.balance.number ());
               ledger.store.representation_add (transaction, info.rep_block, 0 - amount);
               ledger.store.block_put (transaction, hash, block_a);
-              ledger.change_latest (transaction, account, hash, info.rep_block, block_a.hashables.balance, info.block_count + 1);
+              ledger.change_latest (transaction, account, hash, info.rep_block, block_a.hashables.dividend, block_a.hashables.balance, info.block_count + 1);
               ledger.store.pending_put (transaction, chratos::pending_key (block_a.hashables.destination, hash), { account, amount, block_a.hashables.dividend, chratos::epoch::epoch_0 });
               ledger.store.frontier_del (transaction, block_a.hashables.previous);
               ledger.store.frontier_put (transaction, hash, account);
@@ -567,7 +567,7 @@ void ledger_processor::receive_block (chratos::receive_block const & block_a)
                     assert (!error);
                     ledger.store.pending_del (transaction, key);
                     ledger.store.block_put (transaction, hash, block_a);
-                    ledger.change_latest (transaction, account, hash, info.rep_block, new_balance, info.block_count + 1);
+                    ledger.change_latest (transaction, account, hash, info.rep_block, block_a.hashables.dividend, new_balance, info.block_count + 1);
                     ledger.store.representation_add (transaction, info.rep_block, pending.amount.number ());
                     ledger.store.frontier_del (transaction, block_a.hashables.previous);
                     ledger.store.frontier_put (transaction, hash, account);
@@ -623,7 +623,7 @@ void ledger_processor::open_block (chratos::open_block const & block_a)
                 assert (!error);
                 ledger.store.pending_del (transaction, key);
                 ledger.store.block_put (transaction, hash, block_a);
-                ledger.change_latest (transaction, block_a.hashables.account, hash, hash, pending.amount.number (), info.block_count + 1);
+                ledger.change_latest (transaction, block_a.hashables.account, hash, hash, block_a.hashables.dividend, pending.amount.number (), info.block_count + 1);
                 ledger.store.representation_add (transaction, hash, pending.amount.number ());
                 ledger.store.frontier_put (transaction, hash, block_a.hashables.account);
                 result.account = block_a.hashables.account;
@@ -1016,6 +1016,11 @@ chratos::block_hash chratos::ledger::latest_root (MDB_txn * transaction_a, chrat
   return result;
 }
 
+chratos::block_hash chratos::ledger::latest_dividend (MDB_txn * transaction_a) {
+  chratos::dividend_info info = store.dividend_get (transaction_a);
+  return info.head;
+}
+
 chratos::checksum chratos::ledger::checksum (MDB_txn * transaction_a, chratos::account const & begin_a, chratos::account const & end_a)
 {
   chratos::checksum result;
@@ -1096,7 +1101,7 @@ void chratos::ledger::checksum_update (MDB_txn * transaction_a, chratos::block_h
   store.checksum_put (transaction_a, 0, 0, value);
 }
 
-void chratos::ledger::change_latest (MDB_txn * transaction_a, chratos::account const & account_a, chratos::block_hash const & hash_a, chratos::block_hash const & rep_block_a, chratos::amount const & balance_a, uint64_t block_count_a, bool is_state, chratos::epoch epoch_a)
+void chratos::ledger::change_latest (MDB_txn * transaction_a, chratos::account const & account_a, chratos::block_hash const & hash_a, chratos::block_hash const & rep_block_a, chratos::block_hash const & dividend_a, chratos::amount const & balance_a, uint64_t block_count_a, bool is_state, chratos::epoch epoch_a)
 {
   chratos::account_info info;
   auto exists (!store.account_get (transaction_a, account_a, info));
@@ -1108,6 +1113,7 @@ void chratos::ledger::change_latest (MDB_txn * transaction_a, chratos::account c
   {
     assert (store.block_get (transaction_a, hash_a)->previous ().is_zero ());
     info.open_block = hash_a;
+    info.dividend_block = dividend_a;
   }
   if (!hash_a.is_zero ())
   {

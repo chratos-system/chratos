@@ -153,6 +153,7 @@ public:
 	void delegators_count ();
 	void deterministic_key ();
   void dividend_info ();
+  void dividends ();
 	void frontiers ();
 	void history ();
 	void keepalive ();
