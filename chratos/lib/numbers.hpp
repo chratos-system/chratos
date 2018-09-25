@@ -19,6 +19,7 @@ chratos::uint128_t const kchr_ratio = chratos::uint128_t ("100000000000000000000
 chratos::uint128_t const chr_ratio = chratos::uint128_t ("1000000000000000000000000"); // 10^24
 chratos::uint128_t const mchr_ratio = chratos::uint128_t ("1000000000000000000000"); // 10^21
 chratos::uint128_t const uchr_ratio = chratos::uint128_t ("1000000000000000000"); // 10^18
+chratos::uint128_t const minimum_dividend_amount = Mchr_ratio;
 
 union uint128_union
 {

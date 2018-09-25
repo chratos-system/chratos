@@ -38,6 +38,7 @@ public:
 	bool is_send (MDB_txn *, chratos::state_block const &);
 	bool is_dividend (MDB_txn *, chratos::state_block const &);
 	bool is_dividend_claim (MDB_txn *, chratos::state_block const &);
+  bool has_outstanding_pendings_for_dividend (MDB_txn *, chratos::block_hash const &, chratos::account const &);
   chratos::amount amount_for_dividend (MDB_txn *, chratos::block_hash const &, chratos::account const &);
   std::vector<std::shared_ptr<chratos::block>> dividend_claim_blocks (MDB_txn *, chratos::account const &);
   std::unordered_map<chratos::block_hash, int> get_dividend_indexes (MDB_txn *);

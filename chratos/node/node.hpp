@@ -495,6 +495,7 @@ public:
 	unsigned bootstrap_fraction_numerator;
 	chratos::amount receive_minimum;
 	chratos::amount online_weight_minimum;
+  chratos::amount dividend_minimum;
 	unsigned online_weight_quorum;
 	unsigned password_fanout;
 	unsigned io_threads;

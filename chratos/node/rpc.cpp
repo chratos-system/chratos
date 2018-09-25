@@ -1434,7 +1434,7 @@ void chratos::rpc_handler::claim_pending_dividends ()
       for (auto & account : accounts)
       {
         // Check pending and claim outstanding
-        wallet->claim_outstanding_pendings_sync (transaction, account, hash);
+        wallet->receive_outstanding_pendings_sync (transaction, account, hash);
         // Check dividend points to the account's last claimed
         chratos::account_info info;
         node.store.account_get (transaction, account, info);
@@ -1725,18 +1725,28 @@ public:
 			tree.put ("link", block_a.hashables.link.to_string ());
 			tree.put ("balance", block_a.hashables.balance.to_string_dec ());
 			tree.put ("previous", block_a.hashables.previous.to_string ());
+      tree.put ("dividend", block_a.hashables.dividend.to_string ());
 		}
 		auto balance (block_a.hashables.balance.number ());
 		auto previous_balance (handler.node.ledger.balance (transaction, block_a.hashables.previous));
+    auto is_dividend = block_a.hashables.link == block_a.hashables.dividend;
 		if (balance < previous_balance)
 		{
 			if (raw)
 			{
-				tree.put ("subtype", "send");
+        if (is_dividend) {
+				  tree.put ("subtype", "dividend");
+        } else {
+				  tree.put ("subtype", "send");
+        }
 			}
 			else
 			{
-				tree.put ("type", "send");
+        if (is_dividend) {
+				  tree.put ("type", "dividend");
+        } else {
+				  tree.put ("type", "send");
+        }
 			}
 			tree.put ("account", block_a.hashables.link.to_account ());
 			tree.put ("amount", (previous_balance - balance).convert_to<std::string> ());
@@ -1762,11 +1772,19 @@ public:
 			{
 				if (raw)
 				{
-					tree.put ("subtype", "receive");
+          if (is_dividend) {
+            tree.put ("subtype", "claim");
+          } else {
+            tree.put ("subtype", "receive");
+          }
 				}
 				else
 				{
-					tree.put ("type", "receive");
+          if (is_dividend) {
+            tree.put ("type", "claim");
+          } else {
+            tree.put ("type", "receive");
+          }
 				}
 				tree.put ("account", handler.node.ledger.account (transaction, block_a.hashables.link).to_account ());
 				tree.put ("amount", (balance - previous_balance).convert_to<std::string> ());

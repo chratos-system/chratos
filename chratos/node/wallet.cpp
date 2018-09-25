@@ -1450,7 +1450,7 @@ bool chratos::wallet::has_outstanding_pendings_for_dividend (MDB_txn * transacti
   return result;
 }
 
-void chratos::wallet::claim_outstanding_pendings_sync (MDB_txn * transaction_a, chratos::account const & account_a, chratos::block_hash const & dividend_a)
+void chratos::wallet::receive_outstanding_pendings_sync (MDB_txn * transaction_a, chratos::account const & account_a, chratos::block_hash const & dividend_a)
 {
   const auto div_block = node.ledger.store.block_get (transaction_a, dividend_a);
   const auto last_dividend_hash = div_block->dividend ();

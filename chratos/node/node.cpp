@@ -901,6 +901,7 @@ logging (logging_a),
 bootstrap_fraction_numerator (1),
 receive_minimum (chratos::chr_ratio),
 online_weight_minimum (60000 * chratos::Gchr_ratio),
+dividend_minimum (chratos::minimum_dividend_amount),
 online_weight_quorum (50),
 password_fanout (1024),
 io_threads (std::max<unsigned> (4, std::thread::hardware_concurrency ())),
@@ -1650,6 +1651,21 @@ chratos::process_return chratos::block_processor::process_receive_one (MDB_txn *
         BOOST_LOG (node.log) << boost::str (boost::format ("Block %1% cannot follow predecessor %2%") % hash.to_string () % block_a->previous ().to_string ());
       }
       break;
+    }
+    case chratos::process_result::outstanding_pendings:
+    {
+      if (node.config.logging.ledger_logging ())
+      {
+        BOOST_LOG (node.log) << boost::str (boost::format ("Dividend %1% has outstanding pendings") % block_a->dividend ().to_string ());
+      }
+      break;
+    }
+    case chratos::process_result::dividend_too_small:
+    {
+      if (node.config.logging.ledger_logging ())
+      {
+        BOOST_LOG (node.log) << boost::str (boost::format ("Dividend %1% is too small to be accepted") % hash.to_string ());
+      }
     }
   }
   return result;
@@ -2854,7 +2870,7 @@ public:
         for (auto & account : accounts)
         {
           // Check pending and claim outstanding
-          claim_outstanding_pendings (wallet, account, block_a.hash ());
+          receive_outstanding_pendings (wallet, account, block_a.hash ());
           // Check dividend points to the account's last claimed
           chratos::account_info info;
           node.store.account_get (transaction, account, info);
@@ -2873,9 +2889,9 @@ public:
     }
   }
 
-  void claim_outstanding_pendings (std::shared_ptr<chratos::wallet> wallet, chratos::account const & account_a, chratos::block_hash const & dividend_a)
+  void receive_outstanding_pendings (std::shared_ptr<chratos::wallet> wallet, chratos::account const & account_a, chratos::block_hash const & dividend_a)
   {
-    wallet->claim_outstanding_pendings_sync (transaction, account_a, dividend_a);
+    wallet->receive_outstanding_pendings_sync (transaction, account_a, dividend_a);
   }
   void state_block (chratos::state_block const & block_a) override
   {

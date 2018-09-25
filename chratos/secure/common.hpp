@@ -216,7 +216,9 @@ enum class process_result
 	opened_burn_account, // The impossible happened, someone found the private key associated with the public key '0'.
 	balance_mismatch, // Balance and amount delta don't match
 	representative_mismatch, // Representative is changed when it is not allowed
-	block_position // This block cannot follow the previous block
+	block_position, // This block cannot follow the previous block
+  outstanding_pendings, // Dividend claim block has outstanding pendings.
+  dividend_too_small // Dividend amount is not large enough
 };
 class process_return
 {

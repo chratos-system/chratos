@@ -245,7 +245,9 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
               is_send = block_a.hashables.balance < info.balance;
               is_dividend = block_a.hashables.dividend == block_a.hashables.link;
               result.amount = is_send ? (info.balance.number () - result.amount.number ()) : (result.amount.number () - info.balance.number ());
+
               result.code = block_a.hashables.previous == info.head ? chratos::process_result::progress : chratos::process_result::fork; // Is the previous block the account's head block? (Ambigious)
+
             }
           }
         }
@@ -268,8 +270,8 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
               if (result.code == chratos::process_result::progress)
               {
                 chratos::account account = block_a.hashables.account;
-                // TODO - Make sure there are no pendings for the account with
-                // the dividend hash of the current account info.
+
+                result.code = ledger.has_outstanding_pendings_for_dividend (transaction, block_a.hashables.link, account) ? chratos::process_result::outstanding_pendings : chratos::process_result::progress;
 
                 // Make sure that the amount being received is correct.
                 const auto amount (ledger.amount_for_dividend (transaction, block_a.hashables.link, account));
@@ -300,16 +302,21 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
           } 
           else if (is_dividend)
           {
-            // Do dividend checks. Make sure that the previous dividend hasn't be used before.
-            if (!block_a.hashables.link.is_zero ()) 
+            // Is the amount above a threshold
+            result.code = result.amount.number () >= chratos::minimum_dividend_amount ? chratos::process_result::progress : chratos::process_result::dividend_too_small;
+            if (result.code == chratos::process_result::progress && is_dividend)
             {
-              // check block exists
-              result.code = ledger.store.block_exists (transaction, block_a.hashables.link) ? chratos::process_result::progress : chratos::process_result::gap_source;
-            }
-            if (result.code == chratos::process_result::progress) 
-            {
-              auto dividend_info (ledger.store.dividend_get (transaction));
-              result.code = block_a.hashables.link == dividend_info.head ? chratos::process_result::progress : chratos::process_result::fork;
+                // Do dividend checks. Make sure that the previous dividend hasn't be used before.
+              if (!block_a.hashables.link.is_zero ()) 
+              {
+                // check block exists
+                result.code = ledger.store.block_exists (transaction, block_a.hashables.link) ? chratos::process_result::progress : chratos::process_result::gap_source;
+              }
+              if (result.code == chratos::process_result::progress) 
+              {
+                auto dividend_info (ledger.store.dividend_get (transaction));
+                result.code = block_a.hashables.link == dividend_info.head ? chratos::process_result::progress : chratos::process_result::fork;
+              }
             }
           }
         }
@@ -792,6 +799,22 @@ bool chratos::ledger::is_dividend_claim (MDB_txn * transaction_a, chratos::state
   if (link == dividend)
   {
     result = !is_send (transaction_a, block_a);
+  }
+
+  return result;
+}
+
+bool chratos::ledger::has_outstanding_pendings_for_dividend (MDB_txn * transaction_a, chratos::block_hash const & dividend_a, chratos::account const & account_a) {
+  bool result (false);
+
+  chratos::account end (account_a.number () + 1);
+
+  for (auto i (store.pending_begin (transaction_a, chratos::pending_key (account_a, 0))), n (store.pending_begin (transaction_a, chratos::pending_key (end, 0))); i != n && !result; ++i) 
+  {
+    chratos::pending_info info (i->second);
+    if (info.dividend == dividend_a) {
+      result = true;
+    }
   }
 
   return result;

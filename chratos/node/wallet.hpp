@@ -163,7 +163,7 @@ public:
   std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
   chratos::amount amount_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
   bool has_outstanding_pendings_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
-  void claim_outstanding_pendings_sync (MDB_txn *, chratos::account const &, chratos::block_hash const &);
+  void receive_outstanding_pendings_sync (MDB_txn *, chratos::account const &, chratos::block_hash const &);
 	void init_free_accounts (MDB_txn *);
 	/** Changes the wallet seed and returns the first account */
 	chratos::public_key change_seed (MDB_txn * transaction_a, chratos::raw_key const & prv_a);
