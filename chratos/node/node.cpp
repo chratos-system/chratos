@@ -1667,6 +1667,13 @@ chratos::process_return chratos::block_processor::process_receive_one (MDB_txn *
         BOOST_LOG (node.log) << boost::str (boost::format ("Dividend %1% is too small to be accepted") % hash.to_string ());
       }
     }
+    case chratos::process_result::incorrect_dividend:
+    {
+      if (node.config.logging.ledger_logging ())
+      {
+        BOOST_LOG (node.log) << boost::str (boost::format ("Block %1% cannot be sent without the account claiming for the dividend first") % hash.to_string ());
+      }
+    }
   }
   return result;
 }

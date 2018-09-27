@@ -2,10 +2,10 @@
 
 #include <gtest/gtest.h>
 
-#include <rai/core_test/testutil.hpp>
-#include <rai/node/testing.hpp>
+#include <chratos/core_test/testutil.hpp>
+#include <chratos/node/testing.hpp>
 
-#include <rai/qt/qt.hpp>
+#include <chratos/qt/qt.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
 

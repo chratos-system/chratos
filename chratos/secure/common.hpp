@@ -218,7 +218,8 @@ enum class process_result
 	representative_mismatch, // Representative is changed when it is not allowed
 	block_position, // This block cannot follow the previous block
   outstanding_pendings, // Dividend claim block has outstanding pendings.
-  dividend_too_small // Dividend amount is not large enough
+  dividend_too_small, // Dividend amount is not large enough
+  incorrect_dividend // Incorrect dividend being sent
 };
 class process_return
 {

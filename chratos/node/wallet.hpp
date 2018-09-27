@@ -153,13 +153,14 @@ public:
 	void send_async (chratos::account const &, chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true, boost::optional<std::string> = {});
 	chratos::block_hash send_dividend_sync (chratos::account const &, chratos::uint128_t const &);
   void send_dividend_async (chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true, boost::optional<std::string> = {});
-  bool claim_dividend_sync (std::shared_ptr<chratos::block>, chratos::account const &, chratos::account const &);
+  chratos::block_hash claim_dividend_sync (std::shared_ptr<chratos::block>, chratos::account const &, chratos::account const &);
   void claim_dividend_async (std::shared_ptr<chratos::block>, chratos::account const &, chratos::account const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true);
 	void work_apply (chratos::account const &, std::function<void(uint64_t)>);
 	void work_cache_blocking (chratos::account const &, chratos::block_hash const &);
 	void work_update (MDB_txn *, chratos::account const &, chratos::block_hash const &, uint64_t);
 	void work_ensure (chratos::account const &, chratos::block_hash const &);
 	bool search_pending ();
+  std::vector<chratos::block_hash> unclaimed_for_account (chratos::account const &);
   std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
   chratos::amount amount_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
   bool has_outstanding_pendings_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);

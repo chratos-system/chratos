@@ -12,6 +12,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include <future>
+#include <algorithm>
 
 chratos::uint256_union chratos::wallet_store::check (MDB_txn * transaction_a)
 {
@@ -912,9 +913,15 @@ std::shared_ptr<chratos::block> chratos::wallet::receive_action (chratos::block 
           auto new_account (node.ledger.store.account_get (transaction, account, info));
           if (!new_account)
           {
-            std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, info.rep_block);
-            assert (rep_block != nullptr);
-            block.reset (new chratos::state_block (account, info.head, rep_block->representative (), info.balance.number () + pending_info.amount.number (), hash, dividend, prv, account, cached_work));
+            // Check that the account's dividend hash is before or the same as the receiving block.
+            if (dividend == info.dividend_block || node.ledger.dividends_are_ordered (transaction, dividend, info.dividend_block))
+            {
+              std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, info.rep_block);
+              assert (rep_block != nullptr);
+              block.reset (new chratos::state_block (account, info.head, rep_block->representative (), info.balance.number () + pending_info.amount.number (), hash, dividend, prv, account, cached_work));
+            } else {
+              BOOST_LOG (node.log) << "Unable to receive, incorrect dividend hash";
+            }
           }
           else
           {
@@ -1304,10 +1311,10 @@ void chratos::wallet::send_dividend_async (chratos::account const & source_a, ch
   });
 }
 
-bool chratos::wallet::claim_dividend_sync (std::shared_ptr<chratos::block> dividend_a, chratos::account const & account_a, chratos::account const & representative_a) { 
-  std::promise<bool> result;
+chratos::block_hash chratos::wallet::claim_dividend_sync (std::shared_ptr<chratos::block> dividend_a, chratos::account const & account_a, chratos::account const & representative_a) { 
+  std::promise<chratos::block_hash> result;
   claim_dividend_async (dividend_a, account_a, representative_a, [&result](std::shared_ptr<chratos::block> block_a) {
-    result.set_value (block_a == nullptr);
+    result.set_value (block_a->hash ());
   },
   true);
   return result.get_future ().get ();
@@ -1378,6 +1385,36 @@ bool chratos::wallet::search_pending ()
   {
     BOOST_LOG (node.log) << "Stopping search, wallet is locked";
   }
+  return result;
+}
+
+std::vector<chratos::block_hash> chratos::wallet::unclaimed_for_account (chratos::account const & account_a)
+{
+  chratos::transaction transaction (store.environment, nullptr, false);
+  std::vector<chratos::block_hash> result;
+  auto error (!store.valid_password (transaction));
+
+  if (!error)
+  { 
+    chratos::dividend_info div_info (node.store.dividend_get (transaction));
+    chratos::account_info info;
+    if (!node.store.account_get (transaction, account_a, info))
+    {
+      auto open_block = node.store.block_get (transaction, info.open_block);
+      chratos::block_hash open_div = open_block->dividend ();
+      chratos::block_hash current = div_info.head;
+      boost::property_tree::ptree entry;
+
+      while (current != chratos::uint256_union (0) && current != open_div && current != info.dividend_block)
+      {
+        result.push_back (current);
+        auto block (node.store.block_get (transaction, current)); 
+        current = block->dividend ();
+      }
+    }
+  }
+
+  std::reverse(std::begin(result), std::end(result));
   return result;
 }
 

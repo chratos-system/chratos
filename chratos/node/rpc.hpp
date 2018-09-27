@@ -117,6 +117,8 @@ public:
 	void process_request ();
 	void account_balance ();
 	void account_block_count ();
+  void account_claim_dividend ();
+  void account_claim_all_dividends ();
 	void account_count ();
 	void account_create ();
 	void account_get ();
@@ -147,7 +149,7 @@ public:
 	void bootstrap_any ();
 	void chain (bool = false);
   void claimed_dividends ();
-  void claim_pending_dividends ();
+  void claim_dividends ();
 	void confirmation_history ();
 	void delegators ();
 	void delegators_count ();
@@ -172,7 +174,6 @@ public:
 	void payment_wait ();
 	void peers ();
 	void pending ();
-  void pending_dividends ();
 	void pending_exists ();
 	void process ();
 	void receive ();
@@ -191,12 +192,14 @@ public:
 	void unchecked_clear ();
 	void unchecked_get ();
 	void unchecked_keys ();
+  void unclaimed_dividends ();
 	void validate_account_number ();
 	void version ();
 	void wallet_add ();
 	void wallet_add_watch ();
 	void wallet_balances ();
 	void wallet_change_seed ();
+  void wallet_claimed_dividends ();
 	void wallet_contains ();
 	void wallet_create ();
 	void wallet_destroy ();

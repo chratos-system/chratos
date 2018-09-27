@@ -418,6 +418,118 @@ void chratos::rpc_handler::account_block_count ()
 	response_errors ();
 }
 
+void chratos::rpc_handler::account_claim_dividend ()
+{
+	rpc_control_impl ();
+  auto account (account_impl ());
+	auto wallet (wallet_impl ());
+  auto hash (hash_impl ());
+
+  if (!ec)
+  {
+		chratos::transaction transaction (node.store.environment, nullptr, false);
+		if (wallet->store.valid_password (transaction))
+    {
+      chratos::account_info info;
+      if (!node.store.account_get (transaction, account, info))
+      {
+        if (wallet->store.find (transaction, account) != wallet->store.end ())
+        {
+          boost::property_tree::ptree claim;
+
+          chratos::account representative (wallet->store.representative (transaction));
+          std::shared_ptr<chratos::block> dividend_l (node.store.block_get(transaction, hash));
+          // Check pending and claim outstanding
+          wallet->receive_outstanding_pendings_sync (transaction, account, hash);
+          // Check dividend points to the account's last claimed
+
+          if (info.dividend_block == dividend_l->dividend ())
+          {
+            boost::property_tree::ptree entry;
+            // Claim dividends
+            auto claim_hash = wallet->claim_dividend_sync (dividend_l, account, representative);
+            entry.put ("account", account.to_account ());
+            entry.put ("dividend", hash.to_string ());
+            entry.put ("claim", claim_hash.to_string ());
+            claim.push_back(std::make_pair ("", entry));
+
+            response_l.add_child ("claim", claim);
+
+          }
+          else
+          {
+            ec = nano::error_rpc::bad_dividend_order;
+          }
+        }
+        else
+        {
+          ec = nano::error_common::account_not_found_wallet;
+        }
+      }
+      else
+      {
+        ec = nano::error_common::account_not_found;
+      }
+    }
+    else
+    {
+			ec = nano::error_common::wallet_locked;
+    }
+  }
+  response_errors ();
+}
+
+void chratos::rpc_handler::account_claim_all_dividends ()
+{
+	rpc_control_impl ();
+  auto account (account_impl ());
+	auto wallet (wallet_impl ());
+
+  if (!ec)
+  {
+		chratos::transaction transaction (node.store.environment, nullptr, false);
+		if (wallet->store.valid_password (transaction))
+    {
+      if (wallet->store.find (transaction, account) != wallet->store.end ())
+      {
+        chratos::account_info info;
+        auto ordered = wallet->unclaimed_for_account (account);
+
+        boost::property_tree::ptree claims;
+
+        chratos::account representative (wallet->store.representative (transaction));
+        for (auto & hash : ordered)
+        {
+          std::shared_ptr<chratos::block> dividend_l (node.store.block_get(transaction, hash));
+          // Check pending and claim outstanding
+          wallet->receive_outstanding_pendings_sync (transaction, account, hash);
+          // Check dividend points to the account's last claimed
+          chratos::account_info info;
+          node.store.account_get (transaction, account, info);
+          boost::property_tree::ptree entry;
+          // Claim dividends
+          auto claim_hash = wallet->claim_dividend_sync (dividend_l, account, representative);
+          entry.put ("account", account.to_account ());
+          entry.put ("dividend", hash.to_string ());
+          entry.put ("claim", claim_hash.to_string ());
+          claims.push_back(std::make_pair ("", entry));
+        }
+
+        response_l.add_child ("claims", claims);
+      }
+      else
+      {
+        ec = nano::error_common::account_not_found_wallet;
+      }
+    }
+    else
+    {
+			ec = nano::error_common::wallet_locked;
+    }
+  }
+  response_errors ();
+}
+
 void chratos::rpc_handler::account_create ()
 {
 	rpc_control_impl ();
@@ -1410,13 +1522,17 @@ void chratos::rpc_handler::claimed_dividends ()
   response_errors ();
 }
 
-void chratos::rpc_handler::claim_pending_dividends ()
+void chratos::rpc_handler::claim_dividends ()
 {
   chratos::transaction transaction (node.store.environment, nullptr, false);
   auto dividend_order (node.ledger.get_dividend_indexes (transaction));
   const size_t size = dividend_order.size ();
-  std::vector<chratos::block_hash> ordered;
+  std::vector<chratos::block_hash> ordered (size);
   ordered.reserve (size);
+
+  boost::property_tree::ptree claims;
+
+  std::fill(ordered.begin(), ordered.end(), 0);
 
   for (auto & it : dividend_order)
   {
@@ -1438,13 +1554,19 @@ void chratos::rpc_handler::claim_pending_dividends ()
         // Check dividend points to the account's last claimed
         chratos::account_info info;
         node.store.account_get (transaction, account, info);
-        if (info.dividend_block == dividend_l->dividend ()) {
-          // Claim dividends
-          wallet->claim_dividend_async (dividend_l, account, representative, [](std::shared_ptr<chratos::block>) {});
-        }
+        boost::property_tree::ptree entry;
+        // Claim dividends
+        auto claim_hash = wallet->claim_dividend_sync (dividend_l, account, representative);
+        entry.put ("account", account.to_account ());
+        entry.put ("dividend", hash.to_string ());
+        entry.put ("claim", claim_hash.to_string ());
+        claims.push_back(std::make_pair ("", entry));
       }
     }
   }
+  response_l.add_child ("claims", claims);
+
+  response_errors ();
 }
 
 void chratos::rpc_handler::confirmation_history ()
@@ -2180,35 +2302,39 @@ void chratos::rpc_handler::pending ()
 	response_errors ();
 }
 
-void chratos::rpc_handler::pending_dividends () {
+void chratos::rpc_handler::unclaimed_dividends () {
 	auto account (account_impl ());
+
 	if (!ec)
 	{
-		boost::property_tree::ptree peers_l;
-		chratos::transaction transaction (node.store.environment, nullptr, false);
-    chratos::dividend_info div_info (node.store.dividend_get (transaction));
     chratos::account_info info;
+    chratos::transaction transaction (node.store.environment, nullptr, false);
     if (!node.store.account_get (transaction, account, info))
     {
-      chratos::block_hash current = div_info.head;
-      boost::property_tree::ptree entry;
+      boost::property_tree::ptree peers_l;
 
-      while (current != chratos::uint256_union (0))
+      for (auto i = node.wallets.items.begin (); i != node.wallets.items.end (); ++i)
       {
-        entry.put ("", current.to_string ());
-        peers_l.push_back (std::make_pair ("", entry));
-        auto block (node.store.block_get (transaction, current)); 
-        current = block->dividend ();
+        auto wallet = i->second;
+
+        if (wallet->exists (account))
+        {
+          boost::property_tree::ptree entry;
+          auto dividends = wallet->unclaimed_for_account (account);
+          for (auto & hash : dividends)
+          {
+            entry.put ("", hash.to_string ());
+            peers_l.push_back (std::make_pair ("", entry));
+          }
+        }
       }
+      response_l.add_child ("blocks", peers_l);
     }
     else
     {
 			ec = nano::error_common::account_not_found;
     }
-
-    response_l.add_child ("blocks", peers_l);
   }
-
   response_errors ();
 }
 
@@ -3249,6 +3375,44 @@ void chratos::rpc_handler::wallet_change_seed ()
 	response_errors ();
 }
 
+void chratos::rpc_handler::wallet_claimed_dividends ()
+{
+  auto wallet (wallet_impl ());
+  auto hash (hash_impl ());
+	if (!ec)
+	{
+		boost::property_tree::ptree balances;
+		chratos::transaction transaction (node.store.environment, nullptr, false);
+		for (auto i (wallet->store.begin (transaction)), n (wallet->store.end ()); i != n; ++i)
+		{
+			chratos::account account (i->first);
+
+      boost::property_tree::ptree account_data;
+
+      auto claim_blocks = node.ledger.dividend_claim_blocks (transaction, account);
+
+      for (auto & block : claim_blocks)
+      {
+        std::shared_ptr<chratos::block> previous = node.store.block_get (transaction, block->previous ());
+        chratos::state_block const * dividend_state = dynamic_cast<chratos::state_block const *> (block.get ());
+        chratos::state_block const * previous_state = dynamic_cast<chratos::state_block const *> (previous.get ());
+
+        const auto amount = dividend_state->hashables.balance.number () - previous_state->hashables.balance.number ();
+        boost::property_tree::ptree entry;
+        const auto hash = block->hash ();
+        entry.put ("hash", hash.to_string ());
+        entry.put ("dividend", dividend_state->hashables.link.to_string());
+        entry.put ("claimed_amount", amount);
+        account_data.push_back (std::make_pair ("", entry));
+      }
+      balances.add_child (account.to_string (), account_data);
+    }
+
+		response_l.add_child ("balances", balances);
+	}
+  response_errors ();
+}
+
 void chratos::rpc_handler::wallet_contains ()
 {
 	auto account (account_impl ());
@@ -3880,6 +4044,14 @@ void chratos::rpc_handler::process_request ()
 			{
 				account_block_count ();
 			}
+      else if (action == "account_claim_dividend")
+      {
+        account_claim_dividend ();
+      }
+      else if (action == "account_claim_all_dividends")
+      {
+        account_claim_all_dividends ();
+      }
 			else if (action == "account_count")
 			{
 				account_count ();
@@ -4004,9 +4176,9 @@ void chratos::rpc_handler::process_request ()
       {
         claimed_dividends ();
       }
-      else if (action == "claim_pending_dividends")
+      else if (action == "claim_dividends")
       {
-        claim_pending_dividends ();
+        claim_dividends ();
       }
 			else if (action == "delegators")
 			{
@@ -4117,10 +4289,6 @@ void chratos::rpc_handler::process_request ()
 			{
 				pending ();
 			}
-      else if (action == "pending_dividends")
-      {
-        pending_dividends ();
-      }
 			else if (action == "pending_exists")
 			{
 				pending_exists ();
@@ -4197,6 +4365,10 @@ void chratos::rpc_handler::process_request ()
 			{
 				unchecked_keys ();
 			}
+      else if (action == "unclaimed_dividends")
+      {
+        unclaimed_dividends ();
+      }
 			else if (action == "validate_account_number")
 			{
 				validate_account_number ();

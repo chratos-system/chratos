@@ -277,15 +277,24 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
             else if (!block_a.hashables.link.is_zero ())
             {
               result.code = ledger.store.block_exists (transaction, block_a.hashables.link) ? chratos::process_result::progress : chratos::process_result::gap_source; // Have we seen the source block already? (Harmless)
+
               if (result.code == chratos::process_result::progress)
               {
-                chratos::pending_key key (block_a.hashables.account, block_a.hashables.link);
-                chratos::pending_info pending;
-                result.code = ledger.store.pending_get (transaction, key, pending) ? chratos::process_result::unreceivable : chratos::process_result::progress; // Has this source already been received (Malformed)
+                // Make sure the dividend is ordered with the most recent
+                if (info.head != 0) 
+                {
+                  result.code = ledger.dividends_are_ordered (transaction, block_a.hashables.dividend, info.dividend_block) ? chratos::process_result::progress : chratos::process_result::unreceivable;
+                }
                 if (result.code == chratos::process_result::progress)
                 {
-                  result.code = result.amount == pending.amount ? chratos::process_result::progress : chratos::process_result::balance_mismatch;
-                  epoch = std::max (epoch, pending.epoch);
+                  chratos::pending_key key (block_a.hashables.account, block_a.hashables.link);
+                  chratos::pending_info pending;
+                  result.code = ledger.store.pending_get (transaction, key, pending) ? chratos::process_result::unreceivable : chratos::process_result::progress; // Has this source already been received (Malformed)
+                  if (result.code == chratos::process_result::progress)
+                  {
+                    result.code = result.amount == pending.amount ? chratos::process_result::progress : chratos::process_result::balance_mismatch;
+                    epoch = std::max (epoch, pending.epoch);
+                  }
                 }
               }
             }
@@ -313,6 +322,10 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
                 result.code = block_a.hashables.link == dividend_info.head ? chratos::process_result::progress : chratos::process_result::fork;
               }
             }
+          }
+          else if (is_send && !is_dividend)
+          {
+            result.code = (info.dividend_block == block_a.hashables.dividend) ? chratos::process_result::progress : chratos::process_result::incorrect_dividend;
           }
         }
         if (result.code == chratos::process_result::progress)
@@ -350,11 +363,11 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
             chratos::account_info info;
 
             ledger.store.account_get (transaction, account, info);
-            info.dividend_block = block_a.hashables.dividend;
-            ledger.store.account_put (transaction, account, info);
-            
-            // TODO - Make sure the hash is not orphaned by accepting a hash
-            // that is before the current account info hash.
+            if (ledger.dividends_are_ordered (transaction, info.dividend_block, block_a.hashables.dividend))
+            {
+              info.dividend_block = block_a.hashables.dividend;
+              ledger.store.account_put (transaction, account, info);
+            }
           }
           else if (!block_a.hashables.link.is_zero ())
           {
@@ -811,6 +824,30 @@ bool chratos::ledger::has_outstanding_pendings_for_dividend (MDB_txn * transacti
   return result;
 }
 
+bool chratos::ledger::dividends_are_ordered (MDB_txn * transaction_a, chratos::block_hash const & first_a, chratos::block_hash const & last_a)
+{
+  bool result (false);
+
+  if (first_a == last_a) 
+  {
+    return true;
+  }
+
+  std::shared_ptr<chratos::block> block = store.block_get (transaction_a, last_a);
+
+  while (block != nullptr)
+  {
+    chratos::block_hash previous = block->dividend ();
+    if (previous == first_a)
+    {
+      result = true;
+    }
+    block = store.block_get (transaction_a, previous);
+  }
+
+  return result;
+}
+
 chratos::amount chratos::ledger::amount_for_dividend (MDB_txn * transaction_a, chratos::block_hash const & dividend_a, chratos::account const & account_a)
 {
   chratos::amount result (0);
@@ -890,7 +927,7 @@ std::unordered_map<chratos::block_hash, int> chratos::ledger::get_dividend_index
 
   for (auto & it : results)
   {
-    it.second = count - it.second;
+    it.second = (count - 1) - it.second;
   }
 
   return results;
