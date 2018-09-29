@@ -1921,6 +1921,17 @@ public:
 			}
 		}
 	}	
+  void dividend_block (chratos::dividend_block const & block_a)
+	{
+		tree.put ("type", "dividend");
+		auto amount (handler.node.ledger.amount (transaction, hash).convert_to<std::string> ());
+		tree.put ("amount", amount);
+		if (raw)
+		{
+			tree.put ("balance", block_a.hashables.balance.to_string_dec ());
+			tree.put ("previous", block_a.hashables.previous.to_string ());
+		}
+	}
 
 	chratos::rpc_handler & handler;
 	bool raw;

@@ -2918,6 +2918,9 @@ public:
   void change_block (chratos::change_block const &) override
   {
   }
+  void dividend_block (chratos::dividend_block const &) override
+  {
+  }
   MDB_txn * transaction;
   chratos::node & node;
   std::shared_ptr<chratos::block> block;

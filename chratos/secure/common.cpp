@@ -522,6 +522,13 @@ void chratos::amount_visitor::state_block (chratos::state_block const & block_a)
 	current_amount = 0;
 }
 
+void chratos::amount_visitor::dividend_block (chratos::dividend_block const & block_a)
+{
+	current_balance = block_a.hashables.previous;
+	amount = block_a.hashables.balance.number ();
+	current_amount = 0;
+}
+
 void chratos::amount_visitor::change_block (chratos::change_block const & block_a)
 {
 	amount = 0;
@@ -621,6 +628,12 @@ void chratos::balance_visitor::state_block (chratos::state_block const & block_a
 	current_balance = 0;
 }
 
+void chratos::balance_visitor::dividend_block (chratos::dividend_block const & block_a)
+{
+	balance += block_a.hashables.balance.number ();
+	current_balance = 0;
+}
+
 void chratos::balance_visitor::compute (chratos::block_hash const & block_hash)
 {
 	current_balance = block_hash;
@@ -683,6 +696,11 @@ void chratos::representative_visitor::change_block (chratos::change_block const 
 void chratos::representative_visitor::state_block (chratos::state_block const & block_a)
 {
 	result = block_a.hash ();
+}
+
+void chratos::representative_visitor::dividend_block (chratos::dividend_block const & block_a)
+{
+	current = block_a.previous ();
 }
 
 chratos::vote::vote (chratos::vote const & other_a) :
