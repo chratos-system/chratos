@@ -281,7 +281,7 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
               if (result.code == chratos::process_result::progress)
               {
                 // Make sure the dividend is ordered with the most recent
-                if (info.head != 0) 
+                if (info.head != chratos::dividend_base) 
                 {
                   result.code = ledger.dividends_are_ordered (transaction, block_a.hashables.dividend, info.dividend_block) ? chratos::process_result::progress : chratos::process_result::unreceivable;
                 }
@@ -311,7 +311,7 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
             if (result.code == chratos::process_result::progress && is_dividend)
             {
                 // Do dividend checks. Make sure that the previous dividend hasn't be used before.
-              if (!block_a.hashables.link.is_zero ()) 
+              if (block_a.hashables.link != chratos::dividend_base) 
               {
                 // check block exists
                 result.code = ledger.store.block_exists (transaction, block_a.hashables.link) ? chratos::process_result::progress : chratos::process_result::gap_source;
@@ -862,9 +862,11 @@ chratos::amount chratos::ledger::amount_for_dividend (MDB_txn * transaction_a, c
   {
     if (!store.account_get (transaction_a, account_a, account_info))
     {
+      chratos::amount genesis_supply (std::numeric_limits<chratos::uint128_t>::max ());
+      chratos::amount burned_amount (burn_account_balance (transaction_a));
       chratos::amount balance_at_dividend (account_info.balance);
       chratos::amount dividend_amount (previous_block->hashables.balance.number () - state_block->hashables.balance.number ());
-      chratos::amount total_supply (std::numeric_limits<chratos::uint128_t>::max ());
+      chratos::amount total_supply (genesis_supply.number () - burned_amount.number ());
       boost::multiprecision::cpp_bin_float_100 balance_f (balance_at_dividend.number ());
       boost::multiprecision::cpp_bin_float_100 daf (dividend_amount.number ());
       boost::multiprecision::cpp_bin_float_100 tsf (total_supply.number ());
@@ -874,6 +876,27 @@ chratos::amount chratos::ledger::amount_for_dividend (MDB_txn * transaction_a, c
       
       result = chratos::amount (static_cast<uint128_t> (reward));
     }
+  }
+
+  return result;
+}
+
+chratos::amount chratos::ledger::burn_account_balance (MDB_txn * transaction_a)
+{
+  chratos::account burn = burn_account;
+  chratos::amount result (0);
+  chratos::account_info info;
+
+  if (!store.account_get (transaction_a, burn, info))
+  {
+    result = info.balance;
+  }
+
+  chratos::account end (burn.number () + 1);
+  for (auto i (store.pending_v0_begin (transaction_a, chratos::pending_key (burn, 0))), n (store.pending_v0_begin (transaction_a, chratos::pending_key (end, 0))); i != n; ++i)
+  {
+    auto pending_info = i->second;
+    result = result.number () + pending_info.amount.number ();
   }
 
   return result;
@@ -916,7 +939,7 @@ std::unordered_map<chratos::block_hash, int> chratos::ledger::get_dividend_index
   auto current = dividend_info.head;
   int index (0);
 
-  while (current != chratos::block_hash (0))
+  while (current != chratos::dividend_base)
   {
     std::shared_ptr<chratos::block> block = store.block_get (transaction_a, current);
     results[current] = index++;

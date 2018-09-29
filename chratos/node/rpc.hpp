@@ -147,6 +147,7 @@ public:
 	void block_hash ();
 	void bootstrap ();
 	void bootstrap_any ();
+  void burn_account_balance ();
 	void chain (bool = false);
   void claimed_dividends ();
   void claim_dividends ();

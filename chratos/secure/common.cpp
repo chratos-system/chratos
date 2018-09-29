@@ -24,7 +24,7 @@ char const * test_genesis_data = R"%%%({
 	"representative": "chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
 	"account": "chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
 	"work": "9680625b39d3363d",
-  "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
+  "dividend": "0000000000000000000000000000000000000000000000000000000000000001",
 	"signature": "ECDA914373A2F0CA1296475BAEE40500A7F0A7AD72A5A80C81D7FAB7F6C802B2CC7DB50F5DD0FB25B2EF11761FA7344A158DD5A700B21BD47DE5BD0F63153A02"
 })%%%";
 
@@ -34,7 +34,7 @@ char const * beta_genesis_data = R"%%%({
   "representative": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
   "account": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
   "work": "4a18a369468685b2",
-  "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
+  "dividend": "0000000000000000000000000000000000000000000000000000000000000001",
   "signature": "BBCF0BC4873D0007F338A980BC9BEDB1481B19507244E063DBB488BDB2977929F83E1300202DC6D997D8FDC2AA055D7123345698F580BF9A44104D0EAD8CDC0A"
 })%%%";
 
@@ -44,7 +44,7 @@ char const * live_genesis_data = R"%%%({
 	"representative": "chr_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
 	"account": "chr_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
 	"work": "62f05417dd3fb691",
-  "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
+  "dividend": "0000000000000000000000000000000000000000000000000000000000000001",
 	"signature": "9F0C933C8ADE004D808EA1985FA746A7E95BA2A38F867640F53EC8F180BDFE9E2C1268DEAD7C2664F356E37ABA362BC58E46DBA03E523A7B5A19E4B6EB12BB02"
 })%%%";
 
@@ -63,7 +63,8 @@ public:
 	genesis_account (chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? chratos_test_account : chratos::chratos_network == chratos::chratos_networks::chratos_beta_network ? chratos_beta_account : chratos_live_account),
 	genesis_block (chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? chratos_test_genesis : chratos::chratos_network == chratos::chratos_networks::chratos_beta_network ? chratos_beta_genesis : chratos_live_genesis),
 	genesis_amount (std::numeric_limits<chratos::uint128_t>::max ()),
-	burn_account (0)
+	burn_account (0),
+  dividend_base (1)
 	{
 		CryptoPP::AutoSeededRandomPool random_pool;
 		// Randomly generating these mean no two nodes will ever have the same sentinel values which protects against some insecure algorithms
@@ -84,6 +85,7 @@ public:
 	chratos::block_hash not_a_block;
 	chratos::account not_an_account;
 	chratos::account burn_account;
+  chratos::block_hash dividend_base;
 };
 ledger_constants globals;
 }
@@ -109,6 +111,7 @@ chratos::uint128_t const & chratos::genesis_amount (globals.genesis_amount);
 chratos::block_hash const & chratos::not_a_block (globals.not_a_block);
 chratos::block_hash const & chratos::not_an_account (globals.not_an_account);
 chratos::account const & chratos::burn_account (globals.burn_account);
+chratos::block_hash const & chratos::dividend_base (globals.dividend_base);
 
 // Create a new random keypair
 chratos::keypair::keypair ()
@@ -143,7 +146,7 @@ chratos::account_info::account_info () :
 head (0),
 rep_block (0),
 open_block (0),
-dividend_block(0),
+dividend_block(dividend_base),
 balance (0),
 modified (0),
 block_count (0),
@@ -227,7 +230,7 @@ size_t chratos::account_info::db_size () const
 }
 
 chratos::dividend_info::dividend_info () :
-head (0),
+head (dividend_base),
 balance (0),
 modified (0),
 block_count (0),

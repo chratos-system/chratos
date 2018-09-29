@@ -213,7 +213,7 @@ enum class process_result
 	unreceivable, // Source block doesn't exist, has already been received, or requires an account upgrade (epoch blocks)
 	gap_previous, // Block marked as previous is unknown
 	gap_source, // Block marked as source is unknown
-	opened_burn_account, // The impossible happened, someone found the private key associated with the public key '0'.
+	opened_burn_account, // The impossible happened, someone found the private key associated with the public key '1'.
 	balance_mismatch, // Balance and amount delta don't match
 	representative_mismatch, // Representative is changed when it is not allowed
 	block_position, // This block cannot follow the previous block
@@ -248,6 +248,7 @@ extern std::string const & genesis_block;
 extern chratos::account const & genesis_account;
 extern chratos::account const & burn_account;
 extern chratos::uint128_t const & genesis_amount;
+extern chratos::block_hash const & dividend_base;
 // A block hash that compares inequal to any real block hash
 extern chratos::block_hash const & not_a_block;
 // An account number that compares inequal to any real account number

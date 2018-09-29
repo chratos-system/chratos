@@ -1465,6 +1465,14 @@ void chratos::rpc_handler::bootstrap_any ()
 	response_errors ();
 }
 
+void chratos::rpc_handler::burn_account_balance ()
+{
+  chratos::transaction transaction (node.store.environment, nullptr, false);
+  auto balance = node.ledger.burn_account_balance (transaction);
+  response_l.put ("balance", balance.number ());
+  response_errors ();
+}
+
 void chratos::rpc_handler::chain (bool successors)
 {
 	auto hash (hash_impl ("block"));
@@ -4168,6 +4176,10 @@ void chratos::rpc_handler::process_request ()
 			{
 				bootstrap_any ();
 			}
+      else if (action == "burn_account_balance")
+      {
+        burn_account_balance ();
+      }
 			else if (action == "chain")
 			{
 				chain ();
@@ -4398,6 +4410,10 @@ void chratos::rpc_handler::process_request ()
 			{
 				wallet_change_seed ();
 			}
+      else if (action == "wallet_claimed_dividends")
+      {
+        wallet_claimed_dividends ();
+      }
 			else if (action == "wallet_contains")
 			{
 				wallet_contains ();

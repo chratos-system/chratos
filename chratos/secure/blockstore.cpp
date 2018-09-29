@@ -460,7 +460,7 @@ void chratos::block_store::initialize (MDB_txn * transaction_a, chratos::genesis
 	assert (latest_v0_begin (transaction_a) == latest_v0_end ());
 	assert (latest_v1_begin (transaction_a) == latest_v1_end ());
 	block_put (transaction_a, hash_l, *genesis_a.open);
-	account_put (transaction_a, genesis_account, { hash_l, genesis_a.open->hash (), genesis_a.open->hash (), 0,  std::numeric_limits<chratos::uint128_t>::max (), chratos::seconds_since_epoch (), 1, chratos::epoch::epoch_0 });
+	account_put (transaction_a, genesis_account, { hash_l, genesis_a.open->hash (), genesis_a.open->hash (), chratos::dividend_base,  std::numeric_limits<chratos::uint128_t>::max (), chratos::seconds_since_epoch (), 1, chratos::epoch::epoch_0 });
 	representation_put (transaction_a, genesis_account, std::numeric_limits<chratos::uint128_t>::max ());
 	checksum_put (transaction_a, 0, 0, hash_l);
 	frontier_put (transaction_a, hash_l, genesis_account);
