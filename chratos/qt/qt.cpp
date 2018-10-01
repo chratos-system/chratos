@@ -568,6 +568,19 @@ public:
 	}
   void dividend_block (chratos::dividend_block const & block_a)
   {
+		auto balance (block_a.hashables.balance.number ());
+		auto previous_balance (ledger.balance (transaction, block_a.hashables.previous));
+    type = "Dividend";
+    amount = previous_balance - balance;
+    account = block_a.hashables.dividend;
+  }
+  void claim_block (chratos::claim_block const & block_a)
+  {
+		auto balance (block_a.hashables.balance.number ());
+		auto previous_balance (ledger.balance (transaction, block_a.hashables.previous));
+    type = "Claim";
+    amount = balance - previous_balance;
+    account = block_a.hashables.dividend;
   }
 	MDB_txn * transaction;
 	chratos::ledger & ledger;

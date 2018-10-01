@@ -1683,6 +1683,8 @@ void chratos::dividend_block::visit (chratos::block_visitor & visitor_a) const
 
 void chratos::dividend_block::hash (blake2b_state & hash_a) const
 {
+  chratos::uint256_union preamble (static_cast<uint64_t> (chratos::block_type::dividend));
+  blake2b_update (&hash_a, preamble.bytes.data (), preamble.bytes.size ());
   hashables.hash (hash_a);
 }
 
@@ -1761,16 +1763,11 @@ chratos::dividend_hashables::dividend_hashables (bool & error_a, boost::property
 
 void chratos::dividend_hashables::hash (blake2b_state & hash_a) const
 {
-  auto status (blake2b_update (&hash_a, account.bytes.data (), sizeof (account.bytes)));
-  assert (status == 0);
-  status = blake2b_update (&hash_a, previous.bytes.data (), sizeof (previous.bytes));
-  assert (status == 0);
-  status = blake2b_update (&hash_a, representative.bytes.data (), sizeof (representative.bytes));
-  assert (status == 0);
-  status = blake2b_update (&hash_a, balance.bytes.data (), sizeof (balance.bytes));
-  assert (status == 0);
-  status = blake2b_update (&hash_a, dividend.bytes.data (), sizeof (dividend.bytes));
-  assert (status == 0);
+  blake2b_update (&hash_a, account.bytes.data (), sizeof (account.bytes));
+  blake2b_update (&hash_a, previous.bytes.data (), sizeof (previous.bytes));
+  blake2b_update (&hash_a, representative.bytes.data (), sizeof (representative.bytes));
+  blake2b_update (&hash_a, balance.bytes.data (), sizeof (balance.bytes));
+  blake2b_update (&hash_a, dividend.bytes.data (), sizeof (dividend.bytes));
 }
 
 void chratos::dividend_block::serialize (chratos::stream & stream_a) const
@@ -1984,6 +1981,8 @@ void chratos::claim_block::visit (chratos::block_visitor & visitor_a) const
 
 void chratos::claim_block::hash (blake2b_state & hash_a) const
 {
+  chratos::uint256_union preamble (static_cast<uint64_t> (chratos::block_type::claim));
+  blake2b_update (&hash_a, preamble.bytes.data (), preamble.bytes.size ());
   hashables.hash (hash_a);
 }
 
