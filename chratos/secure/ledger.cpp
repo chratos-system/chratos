@@ -164,6 +164,10 @@ public:
   {
     auto hash (block_a.hash ());
   }
+  void claim_block (chratos::claim_block const & block_a) override
+  {
+    auto hash (block_a.hash ());
+  }
 
   MDB_txn * transaction;
   chratos::ledger & ledger;
@@ -180,6 +184,7 @@ public:
   void change_block (chratos::change_block const &) override;
   void state_block (chratos::state_block const &) override;
   void dividend_block (chratos::dividend_block const &) override;
+  void claim_block (chratos::claim_block const &) override;
   void state_block_impl (chratos::state_block const &);
   void epoch_block_impl (chratos::state_block const &);
   chratos::ledger & ledger;
@@ -230,7 +235,6 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
         chratos::account_info info;
         result.amount = block_a.hashables.balance;
         auto is_send (false);
-        auto is_dividend (false);
         auto account_error (ledger.store.account_get (transaction, block_a.hashables.account, info));
         if (!account_error)
         {
@@ -243,7 +247,7 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
             if (result.code == chratos::process_result::progress)
             {
               is_send = block_a.hashables.balance < info.balance;
-              is_dividend = block_a.hashables.dividend == block_a.hashables.link;
+
               result.amount = is_send ? (info.balance.number () - result.amount.number ()) : (result.amount.number () - info.balance.number ());
 
               result.code = block_a.hashables.previous == info.head ? chratos::process_result::progress : chratos::process_result::fork; // Is the previous block the account's head block? (Ambigious)
@@ -264,22 +268,7 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
         {
           if (!is_send)
           {
-            if (is_dividend) 
-            {
-              result.code = ledger.store.block_exists (transaction, block_a.hashables.link) ? chratos::process_result::progress : chratos::process_result::gap_source;
-              if (result.code == chratos::process_result::progress)
-              {
-                chratos::account account = block_a.hashables.account;
-
-                result.code = ledger.has_outstanding_pendings_for_dividend (transaction, block_a.hashables.link, account) ? chratos::process_result::outstanding_pendings : chratos::process_result::progress;
-
-                // Make sure that the amount being received is correct.
-                const auto amount (ledger.amount_for_dividend (transaction, block_a.hashables.link, account));
-                const auto expected = amount;
-                result.code = result.amount == expected ? chratos::process_result::progress : chratos::process_result::balance_mismatch;
-              }
-            }
-            else if (!block_a.hashables.link.is_zero ())
+            if (!block_a.hashables.link.is_zero ())
             {
               result.code = ledger.store.block_exists (transaction, block_a.hashables.link) ? chratos::process_result::progress : chratos::process_result::gap_source; // Have we seen the source block already? (Harmless)
 
@@ -309,26 +298,7 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
               result.code = result.amount.is_zero () ? chratos::process_result::progress : chratos::process_result::balance_mismatch;
             }
           } 
-          else if (is_dividend)
-          {
-            // Is the amount above a threshold
-            result.code = result.amount.number () >= chratos::minimum_dividend_amount ? chratos::process_result::progress : chratos::process_result::dividend_too_small;
-            if (result.code == chratos::process_result::progress && is_dividend)
-            {
-                // Do dividend checks. Make sure that the previous dividend hasn't be used before.
-              if (block_a.hashables.link != chratos::dividend_base) 
-              {
-                // check block exists
-                result.code = ledger.store.block_exists (transaction, block_a.hashables.link) ? chratos::process_result::progress : chratos::process_result::gap_source;
-              }
-              if (result.code == chratos::process_result::progress) 
-              {
-                auto dividend_info (ledger.store.dividend_get (transaction));
-                result.code = block_a.hashables.link == dividend_info.head ? chratos::process_result::progress : chratos::process_result::fork;
-              }
-            }
-          }
-          else if (is_send && !is_dividend)
+          else if (is_send)
           {
             result.code = (info.dividend_block == block_a.hashables.dividend) ? chratos::process_result::progress : chratos::process_result::incorrect_dividend;
           }
@@ -347,32 +317,11 @@ void ledger_processor::state_block_impl (chratos::state_block const & block_a)
           // Add in amount delta
           ledger.store.representation_add (transaction, hash, block_a.hashables.balance.number ());
 
-          if (is_send && !is_dividend)
+          if (is_send)
           {
             chratos::pending_key key (block_a.hashables.link, hash);
             chratos::pending_info info (block_a.hashables.account, result.amount.number (), block_a.hashables.dividend, epoch);
             ledger.store.pending_put (transaction, key, info);
-          }
-          else if (is_send && is_dividend)
-          {
-            auto previous_info (ledger.store.dividend_get (transaction));
-            const auto balance = previous_info.balance.number () + result.amount.number ();
-            const auto count = previous_info.block_count + 1;
-            const auto time = chratos::seconds_since_epoch ();
-            chratos::dividend_info info (hash, balance, time, count, epoch);
-            ledger.store.dividend_put (transaction, info);
-          }
-          else if (!is_send && is_dividend)
-          {
-            chratos::account account = block_a.hashables.account;
-            chratos::account_info info;
-
-            ledger.store.account_get (transaction, account, info);
-            if (ledger.dividends_are_ordered (transaction, info.dividend_block, block_a.hashables.dividend))
-            {
-              info.dividend_block = block_a.hashables.dividend;
-              ledger.store.account_put (transaction, account, info);
-            }
           }
           else if (!block_a.hashables.link.is_zero ())
           {
@@ -660,6 +609,165 @@ void ledger_processor::open_block (chratos::open_block const & block_a)
 
 void ledger_processor::dividend_block (chratos::dividend_block const & block_a)
 {
+  auto hash (block_a.hash ());
+  auto existing (ledger.store.block_exists (transaction, hash));
+  result.code = existing ? chratos::process_result::old : chratos::process_result::progress; // Have we seen this block before? (Harmless)
+  if (result.code == chratos::process_result::progress)
+  {
+    std::shared_ptr<chratos::block> previous (ledger.store.block_get (transaction, block_a.hashables.previous));
+    result.code = previous != nullptr ? chratos::process_result::progress : chratos::process_result::gap_previous; // Have we seen the previous block already? (Harmless)
+    if (result.code == chratos::process_result::progress)
+    {
+      auto account = block_a.hashables.account;
+      result.code = account.is_zero () ? chratos::process_result::fork : chratos::process_result::progress;
+      if (result.code == chratos::process_result::progress)
+      {
+        result.code = validate_message (account, hash, block_a.signature) ? chratos::process_result::bad_signature : chratos::process_result::progress; // Is this block signed correctly (Malformed)
+        if (result.code == chratos::process_result::progress)
+        {
+          chratos::account_info info;
+          auto latest_error (ledger.store.account_get (transaction, account, info));
+          assert (!latest_error);
+          assert (info.head == block_a.hashables.previous);
+          result.code = info.balance.number () >= block_a.hashables.balance.number () ? chratos::process_result::progress : chratos::process_result::negative_spend; // Is this trying to spend a negative amount (Malicious)
+          if (result.code == chratos::process_result::progress)
+          {
+            auto amount (info.balance.number () - block_a.hashables.balance.number ());
+            result.code = amount > chratos::minimum_dividend_amount ? chratos::process_result::progress : chratos::process_result::dividend_too_small;
+
+            if (result.code == chratos::process_result::progress)
+            {
+              // Do dividend checks. Make sure that the previous dividend hasn't been used before.
+              if (block_a.hashables.dividend != chratos::dividend_base) 
+              {
+                // check block exists
+                result.code = ledger.store.block_exists (transaction, block_a.hashables.dividend) ? chratos::process_result::progress : chratos::process_result::gap_source;
+              }
+
+              if (result.code == chratos::process_result::progress) 
+              {
+                auto dividend_info (ledger.store.dividend_get (transaction));
+                result.code = block_a.hashables.dividend == dividend_info.head ? chratos::process_result::progress : chratos::process_result::fork;
+
+                if (result.code == chratos::process_result::progress)
+                {
+                  ledger.store.block_put (transaction, hash, block_a);
+
+                  if (!info.rep_block.is_zero ())
+                  {
+                    // Move existing representation
+                    ledger.store.representation_add (transaction, info.rep_block, 0 - info.balance.number ());
+                  }
+                  // Add in amount delta
+                  ledger.store.representation_add (transaction, hash, block_a.hashables.balance.number ());
+
+                  ledger.change_latest (transaction, account, hash, info.rep_block, block_a.hashables.dividend, block_a.hashables.balance, info.block_count + 1);
+                  if (!ledger.store.frontier_get (transaction, info.head).is_zero ())
+                  {
+                    ledger.store.frontier_del (transaction, info.head);
+                  }
+                  // Frontier table is unnecessary for state blocks and this also prevents old blocks from being inserted on top of state blocks.
+                  result.account = account;
+                  result.amount = amount;
+                  ledger.stats.inc (chratos::stat::type::ledger, chratos::stat::detail::dividend_block);
+                  auto previous_info (ledger.store.dividend_get (transaction));
+                  const auto balance = previous_info.balance.number () + result.amount.number ();
+                  const auto count = previous_info.block_count + 1;
+                  const auto time = chratos::seconds_since_epoch ();
+                  chratos::dividend_info info (hash, balance, time, count, chratos::epoch::epoch_0);
+                  ledger.store.dividend_put (transaction, info);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void ledger_processor::claim_block (chratos::claim_block const & block_a)
+{
+  auto hash (block_a.hash ());
+  auto existing (ledger.store.block_exists (transaction, hash));
+  result.code = existing ? chratos::process_result::old : chratos::process_result::progress; // Have we seen this block already?  (Harmless)
+  if (result.code == chratos::process_result::progress)
+  {
+    auto previous (ledger.store.block_get (transaction, block_a.hashables.previous));
+    result.code = previous != nullptr ? chratos::process_result::progress : chratos::process_result::gap_previous;
+    if (result.code == chratos::process_result::progress)
+    {
+      std::shared_ptr<chratos::block> dividend = ledger.store.block_get (transaction, block_a.hashables.dividend);
+      result.code = dividend != nullptr ? chratos::process_result::progress : chratos::process_result::gap_source; // Have we seen the source block already? (Harmless)
+      if (result.code == chratos::process_result::progress)
+      {
+        chratos::dividend_block const * div_block = dynamic_cast<chratos::dividend_block const *> (dividend.get ());
+        result.code = div_block != nullptr ? chratos::process_result::progress : chratos::process_result::incorrect_dividend;
+        if (result.code == chratos::process_result::progress)
+        {
+          auto account = block_a.hashables.account;
+          result.code = account.is_zero () ? chratos::process_result::gap_previous : chratos::process_result::progress; //Have we seen the previous block? No entries for account at all (Harmless)
+          if (result.code == chratos::process_result::progress)
+          {
+            result.code = chratos::validate_message (account, hash, block_a.signature) ? chratos::process_result::bad_signature : chratos::process_result::progress; // Is the signature valid (Malformed)
+            if (result.code == chratos::process_result::progress)
+            {
+              chratos::account_info info;
+              ledger.store.account_get (transaction, account, info);
+              result.code = info.head == block_a.hashables.previous ? chratos::process_result::progress : chratos::process_result::gap_previous; // Block doesn't immediately follow latest block (Harmless)
+              if (result.code == chratos::process_result::progress)
+              {
+                result.code = ledger.has_outstanding_pendings_for_dividend (transaction, block_a.hashables.dividend, account) ? chratos::process_result::outstanding_pendings : chratos::process_result::progress;
+                if (result.code == chratos::process_result::progress)
+                {
+                  result.code = info.dividend_block != block_a.hashables.dividend && ledger.dividends_are_ordered (transaction, info.dividend_block, block_a.hashables.dividend) ? chratos::process_result::progress : chratos::process_result::unreceivable; // Hash this dividend been claimed already.
+                  if (result.code == chratos::process_result::progress)
+                  {
+                    result.amount = block_a.hashables.balance.number () - info.balance.number ();
+                    const auto expected (ledger.amount_for_dividend (transaction, block_a.hashables.dividend, account));
+                    result.code = result.amount == expected ? chratos::process_result::progress : chratos::process_result::balance_mismatch;
+                    if (result.code == chratos::process_result::progress)
+                    {
+                      ledger.store.block_put (transaction, hash, block_a);
+
+                      if (!info.rep_block.is_zero ())
+                      {
+                        // Move existing representation
+                        ledger.store.representation_add (transaction, info.rep_block, 0 - info.balance.number ());
+                      }
+                      // Add in amount delta
+                      ledger.store.representation_add (transaction, hash, block_a.hashables.balance.number ());
+
+                      chratos::account account = block_a.hashables.account;
+
+                      if (ledger.dividends_are_ordered (transaction, info.dividend_block, block_a.hashables.dividend))
+                      {
+                        info.dividend_block = block_a.hashables.dividend;
+                        ledger.store.account_put (transaction, account, info);
+                      }
+
+                      ledger.change_latest (transaction, account, hash, info.rep_block, block_a.hashables.dividend, block_a.hashables.balance, info.block_count + 1);
+                      if (!ledger.store.frontier_get (transaction, info.head).is_zero ())
+                      {
+                        ledger.store.frontier_del (transaction, info.head);
+                      }
+                      // Frontier table is unnecessary for state blocks and this also prevents old blocks from being inserted on top of state blocks.
+                      result.account = account;
+                      ledger.stats.inc (chratos::stat::type::ledger, chratos::stat::detail::claim_block);
+                    }
+                  }
+                }
+              }
+            }
+          }
+          else
+          {
+            result.code = ledger.store.block_exists (transaction, block_a.hashables.previous) ? chratos::process_result::fork : chratos::process_result::gap_previous; // If we have the block but it's not the latest we have a signed fork (Malicious)
+          }
+        }
+      }
+    }
+  }
 }
 
 ledger_processor::ledger_processor (chratos::ledger & ledger_a, MDB_txn * transaction_a) :
@@ -796,7 +904,7 @@ bool chratos::ledger::is_dividend (MDB_txn * transaction_a, chratos::state_block
 
   if (link == dividend) 
   {
-    result = is_send (transaction_a, block_a);
+    result = !is_send (transaction_a, block_a);
   }
 
   return result;
@@ -864,17 +972,20 @@ chratos::amount chratos::ledger::amount_for_dividend (MDB_txn * transaction_a, c
   std::shared_ptr<chratos::block> block_l = store.block_get(transaction_a, dividend_a);
   auto dividend_hash (block_l->dividend ());
   auto previous (store.block_get(transaction_a, block_l->previous ()));
-  chratos::state_block const * state_block (dynamic_cast<chratos::state_block const *> (block_l.get ()));
-  chratos::state_block const * previous_block (dynamic_cast<chratos::state_block const *> (previous.get ()));
+  chratos::dividend_block const * dividend_block (dynamic_cast<chratos::dividend_block const *> (block_l.get ()));
 
-  if (state_block != nullptr)
+  assert (dividend_block != nullptr);
+
+  if (dividend_block != nullptr)
   {
     if (!store.account_get (transaction_a, account_a, account_info))
     {
       chratos::amount genesis_supply (std::numeric_limits<chratos::uint128_t>::max ());
       chratos::amount burned_amount (burn_account_balance (transaction_a));
       chratos::amount balance_at_dividend (account_info.balance);
-      chratos::amount dividend_amount (previous_block->hashables.balance.number () - state_block->hashables.balance.number ());
+      //chratos::amount previous_balance (balance (transaction_a, block_l->previous ()));
+      //chratos::amount dividend_balance (balance (transaction_a, block_l->hash ()));
+      chratos::amount dividend_amount (amount (transaction_a, block_l->hash ()));
       chratos::amount total_supply (genesis_supply.number () - burned_amount.number ());
       boost::multiprecision::cpp_bin_float_100 balance_f (balance_at_dividend.number ());
       boost::multiprecision::cpp_bin_float_100 daf (dividend_amount.number ());
@@ -1040,7 +1151,7 @@ chratos::account chratos::ledger::account (MDB_txn * transaction_a, chratos::blo
   chratos::block_hash successor (1);
   chratos::block_info block_info;
   std::unique_ptr<chratos::block> block (store.block_get (transaction_a, hash));
-  while (!successor.is_zero () && block->type () != chratos::block_type::state && store.block_info_get (transaction_a, successor, block_info))
+  while (!successor.is_zero () && (block->type () != chratos::block_type::state || block->type () != chratos::block_type::dividend || block->type () != chratos::block_type::claim) && store.block_info_get (transaction_a, successor, block_info))
   {
     successor = store.block_successor (transaction_a, hash);
     if (!successor.is_zero ())
@@ -1053,6 +1164,16 @@ chratos::account chratos::ledger::account (MDB_txn * transaction_a, chratos::blo
   {
     auto state_block (dynamic_cast<chratos::state_block *> (block.get ()));
     result = state_block->hashables.account;
+  }
+  else if (block->type () == chratos::block_type::dividend)
+  {
+    auto dividend_block (dynamic_cast<chratos::dividend_block *> (block.get ()));
+    result = dividend_block->hashables.account;
+  }
+  else if (block->type () == chratos::block_type::claim)
+  {
+    auto claim_block (dynamic_cast<chratos::claim_block *> (block.get ()));
+    result = claim_block->hashables.account;
   }
   else if (successor.is_zero ())
   {
@@ -1162,6 +1283,11 @@ public:
   void dividend_block (chratos::dividend_block const & block_a) override
   {
     result = ledger.store.block_exists (transaction, block_a.previous ());
+  }
+  void claim_block (chratos::claim_block const & block_a) override
+  {
+    result = ledger.store.block_exists (transaction, block_a.previous ());
+    result &= ledger.store.block_exists (transaction, block_a.dividend ());
   }
   chratos::ledger & ledger;
   MDB_txn * transaction;

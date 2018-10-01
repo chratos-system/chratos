@@ -39,7 +39,7 @@ enum class block_type : uint8_t
 	change = 5,
 	state = 6,
   dividend = 7,
-  dividend_claim = 8
+  claim = 8
 };
 class block
 {
@@ -303,18 +303,20 @@ public:
 class dividend_hashables
 {
 public:
-	dividend_hashables (chratos::account const &, chratos::amount const &, chratos::block_hash const &);
+	dividend_hashables (chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::block_hash const &);
 	dividend_hashables (bool &, chratos::stream &);
 	dividend_hashables (bool &, boost::property_tree::ptree const &);
 	void hash (blake2b_state &) const;
+	chratos::account account;
 	chratos::block_hash previous;
+  chratos::account representative;
   chratos::block_hash dividend;
 	chratos::amount balance;
 };
 class dividend_block : public chratos::block
 {
 public:
-	dividend_block (chratos::block_hash const &, chratos::amount const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
+	dividend_block (chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
 	dividend_block (bool &, chratos::stream &);
 	dividend_block (bool &, boost::property_tree::ptree const &);
 	virtual ~dividend_block () = default;
@@ -342,8 +344,53 @@ public:
 	dividend_hashables hashables;
 	chratos::signature signature;
 	uint64_t work;
-
 };
+class claim_hashables
+{
+public:
+	claim_hashables (chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::block_hash const &);
+	claim_hashables (bool &, chratos::stream &);
+	claim_hashables (bool &, boost::property_tree::ptree const &);
+	void hash (blake2b_state &) const;
+	chratos::account account;
+	chratos::block_hash previous;
+  chratos::account representative;
+  chratos::block_hash dividend;
+	chratos::amount balance;
+};
+class claim_block : public chratos::block
+{
+public:
+	claim_block (chratos::account const &, chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
+	claim_block (bool &, chratos::stream &);
+	claim_block (bool &, boost::property_tree::ptree const &);
+	virtual ~claim_block () = default;
+	using chratos::block::hash;
+	void hash (blake2b_state &) const override;
+	uint64_t block_work () const override;
+	void block_work_set (uint64_t) override;
+	chratos::block_hash previous () const override;
+	chratos::block_hash source () const override;
+	chratos::block_hash root () const override;
+  chratos::block_hash dividend () const override;
+	chratos::account representative () const override;
+	void serialize (chratos::stream &) const override;
+	void serialize_json (std::string &) const override;
+	bool deserialize (chratos::stream &);
+	bool deserialize_json (boost::property_tree::ptree const &);
+	void visit (chratos::block_visitor &) const override;
+	chratos::block_type type () const override;
+	chratos::signature block_signature () const override;
+	void signature_set (chratos::uint512_union const &) override;
+	bool operator== (chratos::block const &) const override;
+	bool operator== (chratos::claim_block const &) const;
+	bool valid_predecessor (chratos::block const &) const override;
+	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::amount) + sizeof (chratos::signature) + sizeof (uint64_t);
+	claim_hashables hashables;
+	chratos::signature signature;
+	uint64_t work;
+};
+
 class block_visitor
 {
 public:
@@ -353,6 +400,7 @@ public:
 	virtual void change_block (chratos::change_block const &) = 0;
 	virtual void state_block (chratos::state_block const &) = 0;
   virtual void dividend_block (chratos::dividend_block const &) = 0;
+  virtual void claim_block (chratos::claim_block const &) = 0;
 	virtual ~block_visitor () = default;
 };
 std::unique_ptr<chratos::block> deserialize_block (chratos::stream &);

@@ -60,6 +60,8 @@ public:
   explicit operator std::shared_ptr<chratos::open_block> () const;
   explicit operator std::shared_ptr<chratos::change_block> () const;
   explicit operator std::shared_ptr<chratos::state_block> () const;
+  explicit operator std::shared_ptr<chratos::dividend_block> () const;
+  explicit operator std::shared_ptr<chratos::claim_block> () const;
   explicit operator std::shared_ptr<chratos::vote> () const;
   explicit operator uint64_t () const;
   operator MDB_val * () const;
@@ -98,6 +100,7 @@ public:
   void change_block (chratos::change_block const &) override;
   void state_block (chratos::state_block const &) override;
   void dividend_block (chratos::dividend_block const &) override;
+  void claim_block (chratos::claim_block const &) override;
   MDB_txn * transaction;
   chratos::block_store & store;
   chratos::block_hash current_balance;
@@ -120,6 +123,7 @@ public:
   void change_block (chratos::change_block const &) override;
   void state_block (chratos::state_block const &) override;
   void dividend_block (chratos::dividend_block const &) override;
+  void claim_block (chratos::claim_block const &) override;
   void from_send (chratos::block_hash const &);
   MDB_txn * transaction;
   chratos::block_store & store;
@@ -143,6 +147,7 @@ public:
   void change_block (chratos::change_block const & block_a) override;
   void state_block (chratos::state_block const & block_a) override;
   void dividend_block (chratos::dividend_block const & block_a) override;
+  void claim_block (chratos::claim_block const & block_a) override;
   MDB_txn * transaction;
   chratos::block_store & store;
   chratos::block_hash current;

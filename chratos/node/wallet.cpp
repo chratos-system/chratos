@@ -1141,7 +1141,7 @@ std::shared_ptr<chratos::block> chratos::wallet::pay_dividend_action (chratos::a
             assert (rep_block != nullptr);
             uint64_t cached_work (0);
             store.work_get (transaction, source_a, cached_work);
-            block.reset (new chratos::state_block (source_a, info.head, rep_block->representative (), balance - amount_a, div_info.head, div_info.head, prv, source_a, cached_work));
+            block.reset (new chratos::dividend_block (source_a, info.head, rep_block->representative (), balance - amount_a, div_info.head, prv, source_a, cached_work));
             if (id_mdb_val && block != nullptr)
             {
               auto status (mdb_put (transaction, node.wallets.pay_dividend_action_ids, *id_mdb_val, chratos::mdb_val (block->hash ()), 0));
@@ -1197,7 +1197,7 @@ std::shared_ptr<chratos::block> chratos::wallet::claim_dividend_action (chratos:
             store.work_get (transaction, account_a, cached_work);
             std::shared_ptr<chratos::block> rep_block = node.ledger.store.block_get (transaction, account_info.rep_block);
             assert (rep_block != nullptr);
-            block.reset (new chratos::state_block (account_a, account_info.head, rep_block->representative (), account_info.balance.number () + amount.number (), hash, hash, prv, account_a, cached_work));
+            block.reset (new chratos::claim_block (account_a, account_info.head, rep_block->representative (), account_info.balance.number () + amount.number (), hash, prv, account_a, cached_work));
           }
           else
           {

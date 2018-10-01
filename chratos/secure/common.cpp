@@ -24,7 +24,7 @@ char const * test_genesis_data = R"%%%({
 	"representative": "chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
 	"account": "chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
 	"work": "9680625b39d3363d",
-  "dividend": "0000000000000000000000000000000000000000000000000000000000000001",
+  "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
 	"signature": "ECDA914373A2F0CA1296475BAEE40500A7F0A7AD72A5A80C81D7FAB7F6C802B2CC7DB50F5DD0FB25B2EF11761FA7344A158DD5A700B21BD47DE5BD0F63153A02"
 })%%%";
 
@@ -34,7 +34,7 @@ char const * beta_genesis_data = R"%%%({
   "representative": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
   "account": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
   "work": "4a18a369468685b2",
-  "dividend": "0000000000000000000000000000000000000000000000000000000000000001",
+  "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
   "signature": "BBCF0BC4873D0007F338A980BC9BEDB1481B19507244E063DBB488BDB2977929F83E1300202DC6D997D8FDC2AA055D7123345698F580BF9A44104D0EAD8CDC0A"
 })%%%";
 
@@ -44,7 +44,7 @@ char const * live_genesis_data = R"%%%({
 	"representative": "chr_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
 	"account": "chr_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
 	"work": "62f05417dd3fb691",
-  "dividend": "0000000000000000000000000000000000000000000000000000000000000001",
+  "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
 	"signature": "9F0C933C8ADE004D808EA1985FA746A7E95BA2A38F867640F53EC8F180BDFE9E2C1268DEAD7C2664F356E37ABA362BC58E46DBA03E523A7B5A19E4B6EB12BB02"
 })%%%";
 
@@ -64,7 +64,7 @@ public:
 	genesis_block (chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? chratos_test_genesis : chratos::chratos_network == chratos::chratos_networks::chratos_beta_network ? chratos_beta_genesis : chratos_live_genesis),
 	genesis_amount (std::numeric_limits<chratos::uint128_t>::max ()),
 	burn_account (0),
-  dividend_base (1)
+  dividend_base (0)
 	{
 		CryptoPP::AutoSeededRandomPool random_pool;
 		// Randomly generating these mean no two nodes will ever have the same sentinel values which protects against some insecure algorithms
@@ -299,13 +299,14 @@ receive (0),
 open (0),
 change (0),
 state_v0 (0),
-state_v1 (0)
+state_v1 (0),
+dividend (0)
 {
 }
 
 size_t chratos::block_counts::sum ()
 {
-	return send + receive + open + change + state_v0 + state_v1;
+	return send + receive + open + change + state_v0 + state_v1 + dividend;
 }
 
 chratos::pending_info::pending_info () :
@@ -529,6 +530,13 @@ void chratos::amount_visitor::dividend_block (chratos::dividend_block const & bl
 	current_amount = 0;
 }
 
+void chratos::amount_visitor::claim_block (chratos::claim_block const & block_a)
+{
+	current_balance = block_a.hashables.previous;
+	amount = block_a.hashables.balance.number ();
+	current_amount = 0;
+}
+
 void chratos::amount_visitor::change_block (chratos::change_block const & block_a)
 {
 	amount = 0;
@@ -634,6 +642,12 @@ void chratos::balance_visitor::dividend_block (chratos::dividend_block const & b
 	current_balance = 0;
 }
 
+void chratos::balance_visitor::claim_block (chratos::claim_block const & block_a)
+{
+	balance += block_a.hashables.balance.number ();
+  current_balance = 0;
+}
+
 void chratos::balance_visitor::compute (chratos::block_hash const & block_hash)
 {
 	current_balance = block_hash;
@@ -700,7 +714,12 @@ void chratos::representative_visitor::state_block (chratos::state_block const & 
 
 void chratos::representative_visitor::dividend_block (chratos::dividend_block const & block_a)
 {
-	current = block_a.previous ();
+	current = block_a.hash ();
+}
+
+void chratos::representative_visitor::claim_block (chratos::claim_block const & block_a)
+{
+	current = block_a.hash ();
 }
 
 chratos::vote::vote (chratos::vote const & other_a) :

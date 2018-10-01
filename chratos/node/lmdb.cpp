@@ -243,6 +243,24 @@ chratos::mdb_val::operator std::shared_ptr<chratos::state_block> () const
 	return result;
 }
 
+chratos::mdb_val::operator std::shared_ptr<chratos::dividend_block> () const
+{
+	chratos::bufferstream stream (reinterpret_cast<uint8_t const *> (value.mv_data), value.mv_size);
+	auto error (false);
+	std::shared_ptr<chratos::dividend_block> result (std::make_shared<chratos::dividend_block> (error, stream));
+	assert (!error);
+	return result;
+}
+
+chratos::mdb_val::operator std::shared_ptr<chratos::claim_block> () const
+{
+	chratos::bufferstream stream (reinterpret_cast<uint8_t const *> (value.mv_data), value.mv_size);
+	auto error (false);
+	std::shared_ptr<chratos::claim_block> result (std::make_shared<chratos::claim_block> (error, stream));
+	assert (!error);
+	return result;
+}
+
 chratos::mdb_val::operator std::shared_ptr<chratos::vote> () const
 {
 	auto result (std::make_shared<chratos::vote> ());

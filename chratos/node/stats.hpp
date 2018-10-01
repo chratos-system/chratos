@@ -203,6 +203,8 @@ public:
 		change,
 		state_block,
 		epoch_block,
+    dividend_block,
+    claim_block,
 
 		// message specific
 		keepalive,

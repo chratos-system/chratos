@@ -2862,35 +2862,32 @@ public:
       }
     }
   }
-  void check_dividend (chratos::state_block const & block_a)
+  void claim_dividend (chratos::dividend_block const & block_a)
   {
-    if (node.ledger.is_dividend (transaction, block_a))
+    std::shared_ptr<chratos::block> dividend_l = node.store.block_get (transaction, block_a.hash ());
+    for (auto i (node.wallets.items.begin ()), n (node.wallets.items.end ()); i != n; ++i)
     {
-      std::shared_ptr<chratos::block> dividend_l = node.store.block_get (transaction, block_a.hash ());
-      for (auto i (node.wallets.items.begin ()), n (node.wallets.items.end ()); i != n; ++i)
+      auto wallet (i->second);
+      auto accounts = wallet->search_unclaimed (block_a.hash ());
+      chratos::account representative;
+      representative = wallet->store.representative (transaction);
+
+      for (auto & account : accounts)
       {
-        auto wallet (i->second);
-        auto accounts = wallet->search_unclaimed (block_a.hash ());
-        chratos::account representative;
-        representative = wallet->store.representative (transaction);
-        
-        for (auto & account : accounts)
-        {
-          // Check pending and claim outstanding
-          receive_outstanding_pendings (wallet, account, block_a.hash ());
-          // Check dividend points to the account's last claimed
-          chratos::account_info info;
-          node.store.account_get (transaction, account, info);
-          if (info.dividend_block == dividend_l->dividend ()) {
-            // Claim dividends
-            wallet->claim_dividend_async (dividend_l, account, representative, [](std::shared_ptr<chratos::block>) {});
-          } else {
-            auto prev_hash = dividend_l->dividend ();
-            std::shared_ptr<chratos::block> previous = node.store.block_get (transaction, prev_hash);
-            chratos::state_block const * prev_dividend (dynamic_cast<chratos::state_block const *> (previous.get ()));
-            check_dividend (*prev_dividend);
-            check_dividend (block_a);
-          }
+        // Check pending and claim outstanding
+        receive_outstanding_pendings (wallet, account, block_a.hash ());
+        // Check dividend points to the account's last claimed
+        chratos::account_info info;
+        node.store.account_get (transaction, account, info);
+        if (info.dividend_block == dividend_l->dividend ()) {
+          // Claim dividends
+          wallet->claim_dividend_async (dividend_l, account, representative, [](std::shared_ptr<chratos::block>) {});
+        } else {
+          auto prev_hash = dividend_l->dividend ();
+          std::shared_ptr<chratos::block> previous = node.store.block_get (transaction, prev_hash);
+          chratos::dividend_block const * prev_dividend (dynamic_cast<chratos::dividend_block const *> (previous.get ()));
+          claim_dividend (*prev_dividend);
+          claim_dividend (block_a);
         }
       }
     }
@@ -2903,7 +2900,6 @@ public:
   void state_block (chratos::state_block const & block_a) override
   {
     scan_receivable (block_a.hashables.link);
-    check_dividend (block_a);
   }
   void send_block (chratos::send_block const & block_a) override
   {
@@ -2918,7 +2914,11 @@ public:
   void change_block (chratos::change_block const &) override
   {
   }
-  void dividend_block (chratos::dividend_block const &) override
+  void dividend_block (chratos::dividend_block const & block_a) override
+  {
+    claim_dividend (block_a);
+  }
+  void claim_block (chratos::claim_block const &) override
   {
   }
   MDB_txn * transaction;

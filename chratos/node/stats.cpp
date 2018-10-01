@@ -374,9 +374,15 @@ std::string chratos::stat::detail_to_string (uint32_t key)
 		case chratos::stat::detail::change:
 			res = "change";
 			break;
+    case chratos::stat::detail::claim_block:
+      res = "claim_block";
+      break;
 		case chratos::stat::detail::confirm_ack:
 			res = "confirm_ack";
 			break;
+    case chratos::stat::detail::dividend_block:
+      res = "dividend_block";
+      break;
 		case chratos::stat::detail::node_id_handshake:
 			res = "node_id_handshake";
 			break;

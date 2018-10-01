@@ -1675,7 +1675,7 @@ void chratos::rpc_handler::dividend_info ()
   auto info = node.store.dividend_get (transaction);
   response_l.put ("head", info.head.to_string());
   response_l.put ("count", std::to_string(info.block_count));
-  response_l.put ("paid", info.balance.to_string());
+  response_l.put ("paid", info.balance.number ());
   response_errors ();
 }
 
@@ -1860,22 +1860,29 @@ public:
 		auto balance (block_a.hashables.balance.number ());
 		auto previous_balance (handler.node.ledger.balance (transaction, block_a.hashables.previous));
     auto is_dividend = block_a.hashables.link == block_a.hashables.dividend;
+    auto is_burn = block_a.hashables.link == chratos::burn_account;
 		if (balance < previous_balance)
 		{
 			if (raw)
 			{
-        if (is_dividend) {
-				  tree.put ("subtype", "dividend");
-        } else {
-				  tree.put ("subtype", "send");
+        if (is_burn)
+        {
+          tree.put ("subtype", "burn");
+        }
+        else
+        {
+          tree.put ("subtype", "send");
         }
 			}
 			else
 			{
-        if (is_dividend) {
-				  tree.put ("type", "dividend");
-        } else {
-				  tree.put ("type", "send");
+        if (is_burn)
+        {
+          tree.put ("type", "burn");
+        }
+        else
+        {
+          tree.put ("type", "send");
         }
 			}
 			tree.put ("account", block_a.hashables.link.to_account ());
@@ -1932,8 +1939,19 @@ public:
 			tree.put ("previous", block_a.hashables.previous.to_string ());
 		}
 	}
+  void claim_block (chratos::claim_block const & block_a)
+  {
+    tree.put ("type", "claim");
+		auto amount (handler.node.ledger.amount (transaction, hash).convert_to<std::string> ());
+		tree.put ("amount", amount);
+    if (raw)
+    {
+			tree.put ("balance", block_a.hashables.balance.to_string_dec ());
+			tree.put ("previous", block_a.hashables.previous.to_string ());
+    }
+  }
 
-	chratos::rpc_handler & handler;
+  chratos::rpc_handler & handler;
 	bool raw;
 	chratos::transaction & transaction;
 	boost::property_tree::ptree & tree;

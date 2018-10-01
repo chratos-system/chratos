@@ -308,6 +308,18 @@ public:
 	 */
 	MDB_dbi change_blocks;
 
+  /**
+	 * Maps block hash to dividend block.
+	 * chratos::block_hash -> chratos::dividend_block
+   */
+  MDB_dbi dividend_blocks;
+
+  /**
+	 * Maps block hash to dividend block.
+	 * chratos::block_hash -> chratos::dividend_block
+   */
+  MDB_dbi claim_blocks;
+
 	/**
 	 * Maps block hash to v0 state block.
 	 * chratos::block_hash -> chratos::state_block
