@@ -1892,6 +1892,7 @@ hashables (error_a, stream_a)
     if (!error_a)
     {
       error_a = chratos::read (stream_a, work);
+      boost::endian::big_to_native_inplace (work);
     }
   }
 }
@@ -2195,6 +2196,7 @@ hashables (error_a, stream_a)
     if (!error_a)
     {
       error_a = chratos::read (stream_a, work);
+      boost::endian::big_to_native_inplace (work);
     }
   }
 }
