@@ -300,13 +300,14 @@ open (0),
 change (0),
 state_v0 (0),
 state_v1 (0),
-dividend (0)
+dividend (0),
+claim (0)
 {
 }
 
 size_t chratos::block_counts::sum ()
 {
-	return send + receive + open + change + state_v0 + state_v1 + dividend;
+	return send + receive + open + change + state_v0 + state_v1 + dividend + claim;
 }
 
 chratos::pending_info::pending_info () :

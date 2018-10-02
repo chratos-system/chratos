@@ -1192,7 +1192,7 @@ chratos::block_counts chratos::block_store::block_count (MDB_txn * transaction_a
 	result.state_v0 = state_v0_stats.ms_entries;
 	result.state_v1 = state_v1_stats.ms_entries;
   result.dividend = dividend_stats.ms_entries;
-  result.claim = dividend_stats.ms_entries;
+  result.claim = claim_stats.ms_entries;
 	return result;
 }
 
