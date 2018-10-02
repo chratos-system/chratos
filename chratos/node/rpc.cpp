@@ -2342,6 +2342,8 @@ void chratos::rpc_handler::pending ()
 void chratos::rpc_handler::unclaimed_dividends () {
 	auto account (account_impl ());
 
+  std::set<chratos::block_hash> hashes;
+
 	if (!ec)
 	{
     chratos::account_info info;
@@ -2360,8 +2362,11 @@ void chratos::rpc_handler::unclaimed_dividends () {
           auto dividends = wallet->unclaimed_for_account (account);
           for (auto & hash : dividends)
           {
-            entry.put ("", hash.to_string ());
-            peers_l.push_back (std::make_pair ("", entry));
+            if (hashes.find(hash) == hashes.end()) {
+              hashes.insert(hash);
+              entry.put ("", hash.to_string ());
+              peers_l.push_back (std::make_pair ("", entry));
+            }
           }
         }
       }

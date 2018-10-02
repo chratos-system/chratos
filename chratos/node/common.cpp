@@ -432,7 +432,7 @@ bool chratos::confirm_ack::deserialize (chratos::stream & stream_a)
 
 void chratos::confirm_ack::serialize (chratos::stream & stream_a)
 {
-	assert (header.block_type () == chratos::block_type::not_a_block || header.block_type () == chratos::block_type::send || header.block_type () == chratos::block_type::receive || header.block_type () == chratos::block_type::open || header.block_type () == chratos::block_type::change || header.block_type () == chratos::block_type::state);
+	assert (header.block_type () == chratos::block_type::not_a_block || header.block_type () == chratos::block_type::send || header.block_type () == chratos::block_type::receive || header.block_type () == chratos::block_type::open || header.block_type () == chratos::block_type::change || header.block_type () == chratos::block_type::state || header.block_type () == chratos::block_type::dividend || header.block_type () == chratos::block_type::claim);
 	header.serialize (stream_a);
 	vote->serialize (stream_a, header.block_type ());
 }
