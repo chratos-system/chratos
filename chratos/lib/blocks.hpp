@@ -33,13 +33,13 @@ enum class block_type : uint8_t
 {
 	invalid = 0,
 	not_a_block = 1,
-	send = 2,
-	receive = 3,
-	open = 4,
-	change = 5,
-	state = 6,
-  dividend = 7,
-  claim = 8
+	open = 2,
+	state = 3,
+  dividend = 4,
+  claim = 5,
+	change = 6,
+  send = 7,
+	receive = 8
 };
 class block
 {
