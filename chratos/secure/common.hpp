@@ -221,7 +221,9 @@ enum class process_result
 	block_position, // This block cannot follow the previous block
   outstanding_pendings, // Dividend claim block has outstanding pendings.
   dividend_too_small, // Dividend amount is not large enough
-  incorrect_dividend // Incorrect dividend being sent
+  incorrect_dividend, // Incorrect dividend being sent
+  dividend_fork, // Malicious fork based on previous dividend
+  invalid_dividend_account
 };
 class process_return
 {
@@ -248,6 +250,7 @@ extern std::string const & chratos_beta_genesis;
 extern std::string const & chratos_live_genesis;
 extern std::string const & genesis_block;
 extern chratos::account const & genesis_account;
+extern chratos::account const & dividend_account;
 extern chratos::account const & burn_account;
 extern chratos::uint128_t const & genesis_amount;
 extern chratos::block_hash const & dividend_base;

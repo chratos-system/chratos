@@ -1658,6 +1658,26 @@ chratos::process_return chratos::block_processor::process_receive_one (MDB_txn *
         BOOST_LOG (node.log) << boost::str (boost::format ("Block %1% cannot be sent without the account claiming for the dividend first") % hash.to_string ());
       }
     }
+    case chratos::process_result::dividend_fork:
+    {
+      if (origination < std::chrono::steady_clock::now () - std::chrono::seconds (15))
+      {
+        // Only let the bootstrap attempt know about forked blocks that not originate recently.
+        node.process_dividend_fork (transaction_a, block_a);
+      }
+      if (node.config.logging.ledger_logging ())
+      {
+        BOOST_LOG (node.log) << boost::str (boost::format ("Fork for: %1% root: %2%") % hash.to_string () % block_a->root ().to_string ());
+      }
+      break;
+    }
+    case chratos::process_result::invalid_dividend_account:
+    {
+      if (node.config.logging.ledger_logging ())
+      {
+        BOOST_LOG (node.log) << boost::str (boost::format ("Account %1% cannot create a dividend") % block_a->source ().to_account ());
+      }
+    }
   }
   return result;
 }
@@ -1966,6 +1986,11 @@ void chratos::node::process_fork (MDB_txn * transaction_a, std::shared_ptr<chrat
       }
     }
   }
+}
+
+void chratos::node::process_dividend_fork (MDB_txn * transaction_a, std::shared_ptr<chratos::block> block_a)
+{
+  // TODO - Handle dividend forks explicitly
 }
 
 chratos::gap_cache::gap_cache (chratos::node & node_a) :

@@ -18,6 +18,15 @@ char const * test_private_key_data = "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263
 char const * test_public_key_data = "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0"; // chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo
 char const * beta_public_key_data = "5DB43C7501AC8C1CE5C21C9CF4F2EA1973205F315BF419BD3401B2D3A009740D"; // chr_3betaz86ypbygpqbookmzpnmd5jhh4efmd8arr9a3n4bdmj1zgnzad7xpmfp
 char const * live_public_key_data = "7E5EB032362A11DC9A591E53A12F9E231BE8FD5B25F1BAA4BAA44508DCAA0181"; // chr_1zkyp1s5ecijukf7k9kmn6qswarux5yopbhjqckdob4735gcn1e34rpi75p4
+
+char const * test_dividend_private_key_data = "A0F9F9B553D891620A16D4B1E3AD52C4D20F85A3FA35306DD6E845DCAB5DCCCD";
+
+char const * test_dividend_public_key_data = "4D4BF4BD0D522C9B05B8A722448EAEC25FFDEDFDE7ACBD4636F82EEE19B34972"; // chr_1mcdykyitnjeme4ujbs4ak9cxikzzqpzusxeqo55fy3gxreu8kdkdwpbi6jd
+
+char const * beta_dividend_public_key_data = "B1305346B0A56ADAAF27801AC4DE813B556A224F71DE9A90AFEC494B14CC23C2"; //chr_3ebicf5d3bdcucqkh11trmha4gtofaj6ywgymcaczu4bbeceray4urnwttww
+
+char const * live_dividend_public_key_data = "77D1F41B65EA66F53C023F263E805235FB8E149ECE39B944F4F3492CDDBA57A4"; // chr_1xyjyifpdtm8yny16hs89t176fhujrcbxmjsq74hbwtb7mgunox6mgoodx1a
+
 char const * test_genesis_data = R"%%%({
 	"type": "open",
 	"source": "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0",
@@ -57,11 +66,15 @@ public:
 	chratos_test_account (test_public_key_data),
 	chratos_beta_account (beta_public_key_data),
 	chratos_live_account (live_public_key_data),
+  chratos_test_dividend_account (test_dividend_public_key_data),
+  chratos_beta_dividend_account (beta_dividend_public_key_data),
+  chratos_live_dividend_account (live_dividend_public_key_data),
 	chratos_test_genesis (test_genesis_data),
 	chratos_beta_genesis (beta_genesis_data),
 	chratos_live_genesis (live_genesis_data),
 	genesis_account (chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? chratos_test_account : chratos::chratos_network == chratos::chratos_networks::chratos_beta_network ? chratos_beta_account : chratos_live_account),
 	genesis_block (chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? chratos_test_genesis : chratos::chratos_network == chratos::chratos_networks::chratos_beta_network ? chratos_beta_genesis : chratos_live_genesis),
+	dividend_account (chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? chratos_test_dividend_account : chratos::chratos_network == chratos::chratos_networks::chratos_beta_network ? chratos_beta_dividend_account : chratos_live_dividend_account),
 	genesis_amount (std::numeric_limits<chratos::uint128_t>::max ()),
 	burn_account (0),
   dividend_base (0)
@@ -76,10 +89,14 @@ public:
 	chratos::account chratos_test_account;
 	chratos::account chratos_beta_account;
 	chratos::account chratos_live_account;
+	chratos::account chratos_test_dividend_account;
+	chratos::account chratos_beta_dividend_account;
+	chratos::account chratos_live_dividend_account;
 	std::string chratos_test_genesis;
 	std::string chratos_beta_genesis;
 	std::string chratos_live_genesis;
 	chratos::account genesis_account;
+  chratos::account dividend_account;
 	std::string genesis_block;
 	chratos::uint128_t genesis_amount;
 	chratos::block_hash not_a_block;
@@ -106,6 +123,7 @@ std::string const & chratos::chratos_beta_genesis (globals.chratos_beta_genesis)
 std::string const & chratos::chratos_live_genesis (globals.chratos_live_genesis);
 
 chratos::account const & chratos::genesis_account (globals.genesis_account);
+chratos::account const & chratos::dividend_account (globals.dividend_account);
 std::string const & chratos::genesis_block (globals.genesis_block);
 chratos::uint128_t const & chratos::genesis_amount (globals.genesis_amount);
 chratos::block_hash const & chratos::not_a_block (globals.not_a_block);

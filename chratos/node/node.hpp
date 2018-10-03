@@ -628,6 +628,7 @@ public:
 	void add_initial_peers ();
 	void block_confirm (std::shared_ptr<chratos::block>);
 	void process_fork (MDB_txn *, std::shared_ptr<chratos::block>);
+	void process_dividend_fork (MDB_txn *, std::shared_ptr<chratos::block>);
 	chratos::uint128_t delta ();
 	boost::asio::io_service & service;
 	chratos::node_config config;

@@ -622,60 +622,65 @@ void ledger_processor::dividend_block (chratos::dividend_block const & block_a)
       result.code = account.is_zero () ? chratos::process_result::fork : chratos::process_result::progress;
       if (result.code == chratos::process_result::progress)
       {
-        result.code = validate_message (account, hash, block_a.signature) ? chratos::process_result::bad_signature : chratos::process_result::progress; // Is this block signed correctly (Malformed)
+        // Here is the dividend account check.
+        result.code = account == chratos::dividend_account ? chratos::process_result::progress : chratos::process_result::invalid_dividend_account;
         if (result.code == chratos::process_result::progress)
         {
-          chratos::account_info info;
-          auto latest_error (ledger.store.account_get (transaction, account, info));
-          assert (!latest_error);
-          assert (info.head == block_a.hashables.previous);
-          result.code = info.balance.number () >= block_a.hashables.balance.number () ? chratos::process_result::progress : chratos::process_result::negative_spend; // Is this trying to spend a negative amount (Malicious)
+          result.code = validate_message (account, hash, block_a.signature) ? chratos::process_result::bad_signature : chratos::process_result::progress; // Is this block signed correctly (Malformed)
           if (result.code == chratos::process_result::progress)
           {
-            auto amount (info.balance.number () - block_a.hashables.balance.number ());
-            result.code = amount > chratos::minimum_dividend_amount ? chratos::process_result::progress : chratos::process_result::dividend_too_small;
-
+            chratos::account_info info;
+            auto latest_error (ledger.store.account_get (transaction, account, info));
+            assert (!latest_error);
+            assert (info.head == block_a.hashables.previous);
+            result.code = info.balance.number () >= block_a.hashables.balance.number () ? chratos::process_result::progress : chratos::process_result::negative_spend; // Is this trying to spend a negative amount (Malicious)
             if (result.code == chratos::process_result::progress)
             {
-              // Do dividend checks. Make sure that the previous dividend hasn't been used before.
-              if (block_a.hashables.dividend != chratos::dividend_base) 
-              {
-                // check block exists
-                result.code = ledger.store.block_exists (transaction, block_a.hashables.dividend) ? chratos::process_result::progress : chratos::process_result::gap_source;
-              }
+              auto amount (info.balance.number () - block_a.hashables.balance.number ());
+              result.code = amount > chratos::minimum_dividend_amount ? chratos::process_result::progress : chratos::process_result::dividend_too_small;
 
-              if (result.code == chratos::process_result::progress) 
+              if (result.code == chratos::process_result::progress)
               {
-                auto dividend_info (ledger.store.dividend_get (transaction));
-                result.code = block_a.hashables.dividend == dividend_info.head ? chratos::process_result::progress : chratos::process_result::fork;
-
-                if (result.code == chratos::process_result::progress)
+                // Do dividend checks. Make sure that the previous dividend hasn't been used before.
+                if (block_a.hashables.dividend != chratos::dividend_base) 
                 {
-                  ledger.store.block_put (transaction, hash, block_a);
+                  // check block exists
+                  result.code = ledger.store.block_exists (transaction, block_a.hashables.dividend) ? chratos::process_result::progress : chratos::process_result::gap_source;
+                }
 
-                  if (!info.rep_block.is_zero ())
-                  {
-                    // Move existing representation
-                    ledger.store.representation_add (transaction, info.rep_block, 0 - info.balance.number ());
-                  }
-                  // Add in amount delta
-                  ledger.store.representation_add (transaction, hash, block_a.hashables.balance.number ());
+                if (result.code == chratos::process_result::progress) 
+                {
+                  auto dividend_info (ledger.store.dividend_get (transaction));
+                  result.code = block_a.hashables.dividend == dividend_info.head ? chratos::process_result::progress : chratos::process_result::dividend_fork;
 
-                  ledger.change_latest (transaction, account, hash, info.rep_block, block_a.hashables.dividend, block_a.hashables.balance, info.block_count + 1);
-                  if (!ledger.store.frontier_get (transaction, info.head).is_zero ())
+                  if (result.code == chratos::process_result::progress)
                   {
-                    ledger.store.frontier_del (transaction, info.head);
+                    ledger.store.block_put (transaction, hash, block_a);
+
+                    if (!info.rep_block.is_zero ())
+                    {
+                      // Move existing representation
+                      ledger.store.representation_add (transaction, info.rep_block, 0 - info.balance.number ());
+                    }
+                    // Add in amount delta
+                    ledger.store.representation_add (transaction, hash, block_a.hashables.balance.number ());
+
+                    ledger.change_latest (transaction, account, hash, info.rep_block, block_a.hashables.dividend, block_a.hashables.balance, info.block_count + 1);
+                    if (!ledger.store.frontier_get (transaction, info.head).is_zero ())
+                    {
+                      ledger.store.frontier_del (transaction, info.head);
+                    }
+                    // Frontier table is unnecessary for state blocks and this also prevents old blocks from being inserted on top of state blocks.
+                    result.account = account;
+                    result.amount = amount;
+                    ledger.stats.inc (chratos::stat::type::ledger, chratos::stat::detail::dividend_block);
+                    auto previous_info (ledger.store.dividend_get (transaction));
+                    const auto balance = previous_info.balance.number () + result.amount.number ();
+                    const auto count = previous_info.block_count + 1;
+                    const auto time = chratos::seconds_since_epoch ();
+                    chratos::dividend_info info (hash, balance, time, count, chratos::epoch::epoch_0);
+                    ledger.store.dividend_put (transaction, info);
                   }
-                  // Frontier table is unnecessary for state blocks and this also prevents old blocks from being inserted on top of state blocks.
-                  result.account = account;
-                  result.amount = amount;
-                  ledger.stats.inc (chratos::stat::type::ledger, chratos::stat::detail::dividend_block);
-                  auto previous_info (ledger.store.dividend_get (transaction));
-                  const auto balance = previous_info.balance.number () + result.amount.number ();
-                  const auto count = previous_info.block_count + 1;
-                  const auto time = chratos::seconds_since_epoch ();
-                  chratos::dividend_info info (hash, balance, time, count, chratos::epoch::epoch_0);
-                  ledger.store.dividend_put (transaction, info);
                 }
               }
             }
