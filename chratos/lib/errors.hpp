@@ -110,6 +110,9 @@ enum class error_process
 	opened_burn_account, // The impossible happened, someone found the private key associated with the public key '0'.
 	balance_mismatch, // Balance and amount delta don't match
 	block_position, // This block cannot follow the previous block
+  dividend_too_small, // The amount being sent as a dividend is too small
+  dividend_fork, // Malicious or timed fork based on previous dividend
+  invalid_dividend_account, // Malicious spend from an unauthorized account
 	other
 };
 }

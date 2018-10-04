@@ -23,7 +23,7 @@ char const * test_dividend_private_key_data = "A0F9F9B553D891620A16D4B1E3AD52C4D
 
 char const * test_dividend_public_key_data = "4D4BF4BD0D522C9B05B8A722448EAEC25FFDEDFDE7ACBD4636F82EEE19B34972"; // chr_1mcdykyitnjeme4ujbs4ak9cxikzzqpzusxeqo55fy3gxreu8kdkdwpbi6jd
 
-char const * beta_dividend_public_key_data = "B1305346B0A56ADAAF27801AC4DE813B556A224F71DE9A90AFEC494B14CC23C2"; //chr_3ebicf5d3bdcucqkh11trmha4gtofaj6ywgymcaczu4bbeceray4urnwttww
+char const * beta_dividend_public_key_data = "B1305346B0A56ADAAF27801AC4DE813B556A224F71DE9A90AFEC494B14CC23C2"; // chr_3ebicf5d3bdcucqkh11trmha4gtofaj6ywgymcaczu4bbeceray4urnwttww
 
 char const * live_dividend_public_key_data = "77D1F41B65EA66F53C023F263E805235FB8E149ECE39B944F4F3492CDDBA57A4"; // chr_1xyjyifpdtm8yny16hs89t176fhujrcbxmjsq74hbwtb7mgunox6mgoodx1a
 

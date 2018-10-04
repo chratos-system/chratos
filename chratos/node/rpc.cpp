@@ -2716,6 +2716,21 @@ void chratos::rpc_handler::process ()
 					}
 					break;
 				}
+        case chratos::process_result::dividend_too_small:
+        {
+          ec = nano::error_process::dividend_too_small;
+          break;
+        }
+        case chratos::process_result::dividend_fork:
+        {
+          ec = nano::error_process::dividend_fork;
+          break;
+        }
+        case chratos::process_result::invalid_dividend_account:
+        {
+          ec = nano::error_process::invalid_dividend_account;
+          break;
+        }
 				default:
 				{
 					ec = nano::error_process::other;

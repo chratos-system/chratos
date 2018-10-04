@@ -167,6 +167,12 @@ std::string nano::error_process_messages::message (int ev) const
 			return "Balance and amount delta do not match";
 		case nano::error_process::block_position:
 			return "This block cannot follow the previous block";
+    case nano::error_process::dividend_too_small:
+      return "The dividend amount is too small";
+    case nano::error_process::invalid_dividend_account:
+      return "This account is not authorized to create dividends";
+    case nano::error_process::dividend_fork:
+      return "Dividend fork";
 		case nano::error_process::other:
 			"Error processing block";
 	}
