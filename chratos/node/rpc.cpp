@@ -1713,15 +1713,15 @@ void chratos::rpc_handler::dividends ()
 				else
 				{
 					boost::property_tree::ptree entry;
-          chratos::state_block const * state = dynamic_cast<chratos::state_block const *> (block.get());
+          chratos::dividend_block const * div = dynamic_cast<chratos::dividend_block const *> (block.get());
 
-          if (state == nullptr) { continue; }
+          if (div == nullptr) { break; }
 
-          auto balance (state->hashables.balance.number ());
-          auto previous_balance (node.ledger.balance (transaction, state->hashables.previous));
+          auto balance (div->hashables.balance.number ());
+          auto previous_balance (node.ledger.balance (transaction, div->hashables.previous));
 
           entry.put ("amount", (previous_balance - balance).convert_to<std::string> ());
-          entry.put ("from", state->hashables.account.to_account ());
+          entry.put ("from", div->hashables.account.to_account ());
 					if (!entry.empty ())
 					{
 						entry.put ("hash", hash.to_string ());
@@ -2199,7 +2199,7 @@ void chratos::rpc_handler::ledger ()
 	response_errors ();
 }
 
-void chratos::rpc_handler::mchratos_from_raw (chratos::uint128_t ratio)
+void chratos::rpc_handler::mchr_from_raw (chratos::uint128_t ratio)
 {
 	auto amount (amount_impl ());
 	if (!ec)
@@ -2210,7 +2210,7 @@ void chratos::rpc_handler::mchratos_from_raw (chratos::uint128_t ratio)
 	response_errors ();
 }
 
-void chratos::rpc_handler::mchratos_to_raw (chratos::uint128_t ratio)
+void chratos::rpc_handler::mchr_to_raw (chratos::uint128_t ratio)
 {
 	auto amount (amount_impl ());
 	if (!ec)
@@ -2352,22 +2352,14 @@ void chratos::rpc_handler::unclaimed_dividends () {
     {
       boost::property_tree::ptree peers_l;
 
-      for (auto i = node.wallets.items.begin (); i != node.wallets.items.end (); ++i)
+      auto dividends = node.ledger.unclaimed_for_account (transaction, account);
+      for (auto & hash : dividends)
       {
-        auto wallet = i->second;
-
-        if (wallet->exists (account))
-        {
-          boost::property_tree::ptree entry;
-          auto dividends = wallet->unclaimed_for_account (account);
-          for (auto & hash : dividends)
-          {
-            if (hashes.find(hash) == hashes.end()) {
-              hashes.insert(hash);
-              entry.put ("", hash.to_string ());
-              peers_l.push_back (std::make_pair ("", entry));
-            }
-          }
+        boost::property_tree::ptree entry;
+        if (hashes.find(hash) == hashes.end()) {
+          hashes.insert(hash);
+          entry.put ("", hash.to_string ());
+          peers_l.push_back (std::make_pair ("", entry));
         }
       }
       response_l.add_child ("blocks", peers_l);
@@ -4290,25 +4282,25 @@ void chratos::rpc_handler::process_request ()
 			{
 				key_expand ();
 			}
-			else if (action == "kchratos_from_raw")
+			else if (action == "kchr_from_raw")
 			{
-				mchratos_from_raw (chratos::kchr_ratio);
+				mchr_from_raw (chratos::kchr_ratio);
 			}
-			else if (action == "kchratos_to_raw")
+			else if (action == "kchr_to_raw")
 			{
-				mchratos_to_raw (chratos::kchr_ratio);
+				mchr_to_raw (chratos::kchr_ratio);
 			}
 			else if (action == "ledger")
 			{
 				ledger ();
 			}
-			else if (action == "mchratos_from_raw")
+			else if (action == "mchr_from_raw")
 			{
-				mchratos_from_raw ();
+				mchr_from_raw ();
 			}
-			else if (action == "mchratos_to_raw")
+			else if (action == "mchr_to_raw")
 			{
-				mchratos_to_raw ();
+				mchr_to_raw ();
 			}
 			else if (action == "password_change")
 			{
@@ -4358,13 +4350,13 @@ void chratos::rpc_handler::process_request ()
 			{
 				process ();
 			}
-			else if (action == "chratos_from_raw")
+			else if (action == "chr_from_raw")
 			{
-				mchratos_from_raw (chratos::chr_ratio);
+				mchr_from_raw (chratos::chr_ratio);
 			}
-			else if (action == "chratos_to_raw")
+			else if (action == "chr_to_raw")
 			{
-				mchratos_to_raw (chratos::chr_ratio);
+				mchr_to_raw (chratos::chr_ratio);
 			}
 			else if (action == "receive")
 			{

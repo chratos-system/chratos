@@ -1391,31 +1391,7 @@ bool chratos::wallet::search_pending ()
 std::vector<chratos::block_hash> chratos::wallet::unclaimed_for_account (chratos::account const & account_a)
 {
   chratos::transaction transaction (store.environment, nullptr, false);
-  std::vector<chratos::block_hash> result;
-  auto error (!store.valid_password (transaction));
-
-  if (!error)
-  { 
-    chratos::dividend_info div_info (node.store.dividend_get (transaction));
-    chratos::account_info info;
-    if (!node.store.account_get (transaction, account_a, info))
-    {
-      auto open_block = node.store.block_get (transaction, info.open_block);
-      chratos::block_hash open_div = open_block->dividend ();
-      chratos::block_hash current = div_info.head;
-      boost::property_tree::ptree entry;
-
-      while (current != chratos::uint256_union (0) && current != open_div && current != info.dividend_block)
-      {
-        result.push_back (current);
-        auto block (node.store.block_get (transaction, current)); 
-        current = block->dividend ();
-      }
-    }
-  }
-
-  std::reverse(std::begin(result), std::end(result));
-  return result;
+  return node.ledger.unclaimed_for_account (transaction, account_a);
 }
 
 std::vector<chratos::account> chratos::wallet::search_unclaimed (chratos::block_hash const & dividend_a)

@@ -491,7 +491,7 @@ void ledger_processor::send_block (chratos::send_block const & block_a)
       }
     }
   }
-}
+}/
 
 void ledger_processor::receive_block (chratos::receive_block const & block_a)
 {
@@ -986,7 +986,7 @@ chratos::amount chratos::ledger::amount_for_dividend (MDB_txn * transaction_a, c
     if (!store.account_get (transaction_a, account_a, account_info))
     {
       chratos::amount genesis_supply (std::numeric_limits<chratos::uint128_t>::max ());
-      chratos::amount burned_amount (burn_account_balance (transaction_a));
+      chratos::amount burned_amount (burn_account_balance (transaction_a, dividend_a));
       chratos::amount balance_at_dividend (account_info.balance);
       //chratos::amount previous_balance (balance (transaction_a, block_l->previous ()));
       //chratos::amount dividend_balance (balance (transaction_a, block_l->hash ()));
@@ -1006,7 +1006,32 @@ chratos::amount chratos::ledger::amount_for_dividend (MDB_txn * transaction_a, c
   return result;
 }
 
-chratos::amount chratos::ledger::burn_account_balance (MDB_txn * transaction_a)
+std::vector<chratos::block_hash> chratos::ledger::unclaimed_for_account (MDB_txn * transaction_a, chratos::account const & account_a)
+{
+  std::vector<chratos::block_hash> result;
+
+  chratos::dividend_info div_info (store.dividend_get (transaction_a));
+  chratos::account_info info;
+  if (!store.account_get (transaction_a, account_a, info))
+  {
+    auto open_block = store.block_get (transaction_a, info.open_block);
+    chratos::block_hash open_div = open_block->dividend ();
+    chratos::block_hash current = div_info.head;
+    boost::property_tree::ptree entry;
+
+    while (current != chratos::uint256_union (0) && current != open_div && current != info.dividend_block)
+    {
+      result.push_back (current);
+      auto block (store.block_get (transaction_a, current)); 
+      current = block->dividend ();
+    }
+  }
+
+  std::reverse(std::begin(result), std::end(result));
+  return result;
+}
+
+chratos::amount chratos::ledger::burn_account_balance (MDB_txn * transaction_a, chratos::block_hash const & dividend_a)
 {
   chratos::account burn = burn_account;
   chratos::amount result (0);
@@ -1017,11 +1042,18 @@ chratos::amount chratos::ledger::burn_account_balance (MDB_txn * transaction_a)
     result = info.balance;
   }
 
+  std::shared_ptr<chratos::block> dividend = store.block_get (transaction_a, dividend_a);
+
+  chratos::block_hash 
+
   chratos::account end (burn.number () + 1);
   for (auto i (store.pending_v0_begin (transaction_a, chratos::pending_key (burn, 0))), n (store.pending_v0_begin (transaction_a, chratos::pending_key (end, 0))); i != n; ++i)
   {
     auto pending_info = i->second;
-    result = result.number () + pending_info.amount.number ();
+    if (dividends_are_ordered(pending_info.dividend, dividend) && pending_info.dividend != dividend)
+    {
+      result = result.number () + pending_info.amount.number ();
+    }
   }
 
   return result;

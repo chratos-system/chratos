@@ -41,7 +41,8 @@ public:
   bool has_outstanding_pendings_for_dividend (MDB_txn *, chratos::block_hash const &, chratos::account const &);
   bool dividends_are_ordered (MDB_txn *, chratos::block_hash const &, chratos::block_hash const &);
   chratos::amount amount_for_dividend (MDB_txn *, chratos::block_hash const &, chratos::account const &);
-  chratos::amount burn_account_balance (MDB_txn *);
+  std::vector<chratos::block_hash> unclaimed_for_account (MDB_txn *, chratos::account const &);
+  chratos::amount burn_account_balance (MDB_txn *, chratos::block_hash const &);
   std::vector<std::shared_ptr<chratos::block>> dividend_claim_blocks (MDB_txn *, chratos::account const &);
   std::unordered_map<chratos::block_hash, int> get_dividend_indexes (MDB_txn *);
 	chratos::block_hash block_destination (MDB_txn *, chratos::block const &);

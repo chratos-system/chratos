@@ -163,8 +163,8 @@ public:
 	void key_create ();
 	void key_expand ();
 	void ledger ();
-	void mchratos_to_raw (chratos::uint128_t = chratos::Mchr_ratio);
-	void mchratos_from_raw (chratos::uint128_t = chratos::Mchr_ratio);
+	void mchr_to_raw (chratos::uint128_t = chratos::Mchr_ratio);
+	void mchr_from_raw (chratos::uint128_t = chratos::Mchr_ratio);
 	void password_change ();
 	void password_enter ();
 	void password_valid (bool = false);

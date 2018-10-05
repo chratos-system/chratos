@@ -13,12 +13,12 @@ using uint128_t = boost::multiprecision::uint128_t;
 using uint256_t = boost::multiprecision::uint256_t;
 using uint512_t = boost::multiprecision::uint512_t;
 // SI dividers
-chratos::uint128_t const Gchr_ratio = chratos::uint128_t ("1000000000000000000000000000000000"); // 10^33
-chratos::uint128_t const Mchr_ratio = chratos::uint128_t ("1000000000000000000000000000000"); // 10^30
-chratos::uint128_t const kchr_ratio = chratos::uint128_t ("1000000000000000000000000000"); // 10^27
-chratos::uint128_t const chr_ratio = chratos::uint128_t ("1000000000000000000000000"); // 10^24
-chratos::uint128_t const mchr_ratio = chratos::uint128_t ("1000000000000000000000"); // 10^21
-chratos::uint128_t const uchr_ratio = chratos::uint128_t ("1000000000000000000"); // 10^18
+chratos::uint128_t const Gchr_ratio = chratos::uint128_t ("10000000000000000000000000000000000"); // 10^34
+chratos::uint128_t const Mchr_ratio = chratos::uint128_t ("10000000000000000000000000000000"); // 10^31
+chratos::uint128_t const kchr_ratio = chratos::uint128_t ("10000000000000000000000000000"); // 10^28
+chratos::uint128_t const chr_ratio = chratos::uint128_t ("10000000000000000000000000"); // 10^25
+chratos::uint128_t const mchr_ratio = chratos::uint128_t ("10000000000000000000000"); // 10^22
+chratos::uint128_t const uchr_ratio = chratos::uint128_t ("10000000000000000000"); // 10^19
 chratos::uint128_t const minimum_dividend_amount = Mchr_ratio;
 
 union uint128_union
