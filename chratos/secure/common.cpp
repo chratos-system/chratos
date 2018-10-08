@@ -25,7 +25,7 @@ char const * test_dividend_public_key_data = "4D4BF4BD0D522C9B05B8A722448EAEC25F
 
 char const * beta_dividend_public_key_data = "B1305346B0A56ADAAF27801AC4DE813B556A224F71DE9A90AFEC494B14CC23C2"; // chr_3ebicf5d3bdcucqkh11trmha4gtofaj6ywgymcaczu4bbeceray4urnwttww
 
-char const * live_dividend_public_key_data = "5194BF2A8BA483DD84C00011AE2417FA6D8DAC010E19E1F6F03B7FB0744F38BB"; // xrb_1nenqwoaqb65up4e111jork3hymfjpp145isw9uh1guzp3t6yg7u9n8r5hcf
+char const * live_dividend_public_key_data = "5194BF2A8BA483DD84C00011AE2417FA6D8DAC010E19E1F6F03B7FB0744F38BB"; // chr_1nenqwoaqb65up4e111jork3hymfjpp145isw9uh1guzp3t6yg7u9n8r5hcf
 
 char const * test_genesis_data = R"%%%({
 	"type": "state",
