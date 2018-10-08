@@ -3,6 +3,7 @@
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <chratos/node/rpc.hpp>
+#include <set>
 
 #include <chratos/lib/interface.h>
 #include <chratos/node/node.hpp>
