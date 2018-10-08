@@ -1650,6 +1650,7 @@ chratos::process_return chratos::block_processor::process_receive_one (MDB_txn *
       {
         BOOST_LOG (node.log) << boost::str (boost::format ("Dividend %1% is too small to be accepted") % hash.to_string ());
       }
+      break;
     }
     case chratos::process_result::incorrect_dividend:
     {
@@ -1657,6 +1658,8 @@ chratos::process_return chratos::block_processor::process_receive_one (MDB_txn *
       {
         BOOST_LOG (node.log) << boost::str (boost::format ("Block %1% cannot be sent without the account claiming for the dividend first") % hash.to_string ());
       }
+      node.store.unchecked_put (transaction_a, block_a->dividend (), block_a);
+      break;
     }
     case chratos::process_result::dividend_fork:
     {
@@ -1677,6 +1680,7 @@ chratos::process_return chratos::block_processor::process_receive_one (MDB_txn *
       {
         BOOST_LOG (node.log) << boost::str (boost::format ("Account %1% cannot create a dividend") % block_a->source ().to_account ());
       }
+      break;
     }
   }
   return result;

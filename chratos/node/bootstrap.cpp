@@ -503,14 +503,14 @@ void chratos::bulk_pull_client::received_type ()
 		}
     case chratos::block_type::dividend:
     {
-			connection->socket->async_read (connection->receive_buffer, chratos::state_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
+			connection->socket->async_read (connection->receive_buffer, chratos::dividend_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
 				this_l->received_block (ec, size_a, type);
       });
       break;
     }
     case chratos::block_type::claim:
     {
-			connection->socket->async_read (connection->receive_buffer, chratos::state_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
+			connection->socket->async_read (connection->receive_buffer, chratos::claim_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
 				this_l->received_block (ec, size_a, type);
       });
       break;

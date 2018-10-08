@@ -108,7 +108,7 @@ public:
 	bool operator== (chratos::block const &) const override;
 	bool operator== (chratos::send_block const &) const;
 	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::amount) + sizeof (chratos::signature) + sizeof (uint64_t);
+	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::amount) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
 	send_hashables hashables;
 	chratos::signature signature;
 	uint64_t work;
@@ -152,7 +152,7 @@ public:
 	bool operator== (chratos::block const &) const override;
 	bool operator== (chratos::receive_block const &) const;
 	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::block_hash) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
+	static size_t constexpr size = sizeof (chratos::block_hash) + sizeof (chratos::block_hash) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
 	receive_hashables hashables;
 	chratos::signature signature;
 	uint64_t work;
@@ -197,7 +197,7 @@ public:
 	bool operator== (chratos::block const &) const override;
 	bool operator== (chratos::open_block const &) const;
 	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::account) + sizeof (chratos::signature) + sizeof (uint64_t);
+	static size_t constexpr size = sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
 	chratos::open_hashables hashables;
 	chratos::signature signature;
 	uint64_t work;
@@ -240,7 +240,7 @@ public:
 	bool operator== (chratos::block const &) const override;
 	bool operator== (chratos::change_block const &) const;
 	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::signature) + sizeof (uint64_t);
+	static size_t constexpr size = sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
 	chratos::change_hashables hashables;
 	chratos::signature signature;
 	uint64_t work;
@@ -295,7 +295,7 @@ public:
 	bool operator== (chratos::block const &) const override;
 	bool operator== (chratos::state_block const &) const;
 	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::amount) + sizeof (chratos::uint256_union) + sizeof (chratos::signature) + sizeof (uint64_t);
+	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::amount) + sizeof (chratos::block_hash) + sizeof (chratos::uint256_union) + sizeof (chratos::signature) + sizeof (uint64_t);
 	chratos::state_hashables hashables;
 	chratos::signature signature;
 	uint64_t work;
@@ -310,8 +310,8 @@ public:
 	chratos::account account;
 	chratos::block_hash previous;
   chratos::account representative;
-  chratos::block_hash dividend;
 	chratos::amount balance;
+  chratos::block_hash dividend;
 };
 class dividend_block : public chratos::block
 {
@@ -340,7 +340,7 @@ public:
 	bool operator== (chratos::block const &) const override;
 	bool operator== (chratos::dividend_block const &) const;
 	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::amount) + sizeof (chratos::signature) + sizeof (uint64_t);
+	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::amount) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
 	dividend_hashables hashables;
 	chratos::signature signature;
 	uint64_t work;
@@ -355,8 +355,8 @@ public:
 	chratos::account account;
 	chratos::block_hash previous;
   chratos::account representative;
-  chratos::block_hash dividend;
 	chratos::amount balance;
+  chratos::block_hash dividend;
 };
 class claim_block : public chratos::block
 {
@@ -385,7 +385,7 @@ public:
 	bool operator== (chratos::block const &) const override;
 	bool operator== (chratos::claim_block const &) const;
 	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::amount) + sizeof (chratos::signature) + sizeof (uint64_t);
+	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::amount) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
 	claim_hashables hashables;
 	chratos::signature signature;
 	uint64_t work;

@@ -117,6 +117,7 @@ public:
 	void process_request ();
 	void account_balance ();
 	void account_block_count ();
+  void account_claim_amount ();
   void account_claim_dividend ();
   void account_claim_all_dividends ();
 	void account_count ();
@@ -157,6 +158,7 @@ public:
 	void deterministic_key ();
   void dividend_info ();
   void dividends ();
+  void dividend_claim_ratio ();
 	void frontiers ();
 	void history ();
 	void keepalive ();

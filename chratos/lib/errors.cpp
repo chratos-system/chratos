@@ -175,6 +175,8 @@ std::string nano::error_process_messages::message (int ev) const
       return "Dividend fork";
 		case nano::error_process::other:
 			"Error processing block";
+    case nano::error_process::outstanding_pendings:
+      return "Outstanding pendings";
 	}
 
 	return "Invalid error code";

@@ -1,5 +1,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/multiprecision/cpp_bin_float.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 #include <chratos/node/rpc.hpp>
 
 #include <chratos/lib/interface.h>
@@ -416,6 +418,39 @@ void chratos::rpc_handler::account_block_count ()
 		}
 	}
 	response_errors ();
+}
+
+void chratos::rpc_handler::account_claim_amount ()
+{
+  auto account (account_impl ());
+  auto hash = (hash_impl ());
+
+  if (!ec)
+  {
+		chratos::transaction transaction (node.store.environment, nullptr, false);
+
+    std::shared_ptr<chratos::block> block = node.store.block_get (transaction, hash);
+
+    if (block)
+    {
+      chratos::dividend_block const * dividend = dynamic_cast<chratos::dividend_block const *> (block.get ());
+
+      if (dividend)
+      {
+        auto amount (node.ledger.amount_for_dividend (transaction, hash, account));
+        response_l.put ("amount", amount.number ());
+      }
+      else
+      {
+        ec = nano::error_rpc::bad_dividend;
+      }
+    }
+    else
+    {
+      ec = nano::error_blocks::invalid_block_hash;
+    }
+  }
+  response_errors ();
 }
 
 void chratos::rpc_handler::account_claim_dividend ()
@@ -1467,9 +1502,33 @@ void chratos::rpc_handler::bootstrap_any ()
 
 void chratos::rpc_handler::burn_account_balance ()
 {
-  chratos::transaction transaction (node.store.environment, nullptr, false);
-  auto balance = node.ledger.burn_account_balance (transaction);
-  response_l.put ("balance", balance.number ());
+  auto hash (hash_impl ("dividend"));
+
+  if (!ec)
+  {
+		chratos::transaction transaction (node.store.environment, nullptr, false);
+
+    std::shared_ptr<chratos::block> block = node.store.block_get (transaction, hash);
+
+    if (block)
+    {
+      chratos::dividend_block const * dividend = dynamic_cast<chratos::dividend_block const *> (block.get ());
+
+      if (dividend)
+      {
+        auto balance = node.ledger.burn_account_balance (transaction, hash);
+        response_l.put ("balance", balance.number ());
+      }
+      else
+      {
+        ec = nano::error_rpc::bad_dividend;
+      }
+    }
+    else
+    {
+      ec = nano::error_blocks::invalid_block_hash;
+    }
+  }
   response_errors ();
 }
 
@@ -1744,6 +1803,51 @@ void chratos::rpc_handler::dividends ()
 		}
 	}
 	response_errors ();
+}
+
+void chratos::rpc_handler::dividend_claim_ratio ()
+{
+  auto hash = (hash_impl ());
+
+  if (!ec)
+  {
+		chratos::transaction transaction (node.store.environment, nullptr, false);
+
+    std::shared_ptr<chratos::block> block = node.store.block_get (transaction, hash);
+    if (block)
+    {
+      chratos::dividend_block const * dividend = dynamic_cast<chratos::dividend_block const *> (block.get ());
+
+      if (dividend)
+      {
+        chratos::amount dividend_amount (node.ledger.amount (transaction, hash));
+        chratos::amount genesis_supply (std::numeric_limits<chratos::uint128_t>::max ());
+        chratos::amount burned_amount (node.ledger.burn_account_balance (transaction, hash));
+        chratos::amount total_supply (genesis_supply.number () - burned_amount.number ());
+        boost::multiprecision::cpp_bin_float_50 daf (dividend_amount.number ());
+        boost::multiprecision::cpp_bin_float_50 tsf (total_supply.number ());
+        boost::multiprecision::cpp_bin_float_50 total_f (tsf - daf);
+        boost::multiprecision::cpp_bin_float_50 ratio (daf / total_f);
+
+        response_l.put ("dividend", hash.to_string ());
+        response_l.put ("amount", dividend_amount.number());
+        response_l.put ("total_supply", genesis_supply.number ());
+        response_l.put ("burnt_supply", burned_amount.number ());
+        response_l.put ("valid_supply", total_supply.number ());
+        response_l.put ("ratio", ratio);
+      }
+      else
+      {
+        ec = nano::error_rpc::bad_dividend;
+      }
+    }
+    else
+    {
+      ec = nano::error_blocks::invalid_block_hash;
+    }
+  }
+  response_errors ();
+
 }
 
 void chratos::rpc_handler::frontiers ()
@@ -2721,6 +2825,11 @@ void chratos::rpc_handler::process ()
         case chratos::process_result::invalid_dividend_account:
         {
           ec = nano::error_process::invalid_dividend_account;
+          break;
+        }
+        case chratos::process_result::outstanding_pendings:
+        {
+          ec = nano::error_process::outstanding_pendings;
           break;
         }
 				default:
@@ -4093,6 +4202,10 @@ void chratos::rpc_handler::process_request ()
 			{
 				account_block_count ();
 			}
+      else if (action == "account_claim_amount")
+      {
+        account_claim_amount ();
+      }
       else if (action == "account_claim_dividend")
       {
         account_claim_dividend ();
@@ -4256,6 +4369,10 @@ void chratos::rpc_handler::process_request ()
       else if (action == "dividends")
       {
         dividends ();
+      }
+      else if (action == "dividend_claim_ratio")
+      {
+        dividend_claim_ratio ();
       }
 			else if (action == "frontiers")
 			{

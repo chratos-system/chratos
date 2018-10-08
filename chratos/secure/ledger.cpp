@@ -21,6 +21,7 @@ public:
   virtual ~rollback_visitor () = default;
   void send_block (chratos::send_block const & block_a) override
   {
+    /*
     auto hash (block_a.hash ());
     chratos::pending_info pending;
     chratos::pending_key key (block_a.hashables.destination, hash);
@@ -43,9 +44,11 @@ public:
       ledger.store.block_info_del (transaction, hash);
     }
     ledger.stats.inc (chratos::stat::type::rollback, chratos::stat::detail::send);
+    */
   }
   void receive_block (chratos::receive_block const & block_a) override
   {
+    /*
     auto hash (block_a.hash ());
     auto representative (ledger.representative (transaction, block_a.hashables.previous));
     auto amount (ledger.amount (transaction, block_a.hashables.source));
@@ -66,9 +69,11 @@ public:
       ledger.store.block_info_del (transaction, hash);
     }
     ledger.stats.inc (chratos::stat::type::rollback, chratos::stat::detail::receive);
+    */
   }
   void open_block (chratos::open_block const & block_a) override
   {
+    /*
     auto hash (block_a.hash ());
     auto amount (ledger.amount (transaction, block_a.hashables.source));
     auto destination_account (ledger.account (transaction, hash));
@@ -79,9 +84,11 @@ public:
     ledger.store.pending_put (transaction, chratos::pending_key (destination_account, block_a.hashables.source), { source_account, amount, block_a.hashables.dividend, chratos::epoch::epoch_0 });
     ledger.store.frontier_del (transaction, hash);
     ledger.stats.inc (chratos::stat::type::rollback, chratos::stat::detail::open);
+    */
   }
   void change_block (chratos::change_block const & block_a) override
   {
+    /*
     auto hash (block_a.hash ());
     auto representative (ledger.representative (transaction, block_a.hashables.previous));
     auto account (ledger.account (transaction, block_a.hashables.previous));
@@ -101,6 +108,7 @@ public:
       ledger.store.block_info_del (transaction, hash);
     }
     ledger.stats.inc (chratos::stat::type::rollback, chratos::stat::detail::change);
+    */
   }
   void state_block (chratos::state_block const & block_a) override
   {
@@ -406,205 +414,18 @@ void ledger_processor::epoch_block_impl (chratos::state_block const & block_a)
 
 void ledger_processor::change_block (chratos::change_block const & block_a)
 {
-  auto hash (block_a.hash ());
-  auto existing (ledger.store.block_exists (transaction, hash));
-  result.code = existing ? chratos::process_result::old : chratos::process_result::progress; // Have we seen this block before? (Harmless)
-  if (result.code == chratos::process_result::progress)
-  {
-    auto previous (ledger.store.block_get (transaction, block_a.hashables.previous));
-    result.code = previous != nullptr ? chratos::process_result::progress : chratos::process_result::gap_previous; // Have we seen the previous block already? (Harmless)
-    if (result.code == chratos::process_result::progress)
-    {
-      result.code = block_a.valid_predecessor (*previous) ? chratos::process_result::progress : chratos::process_result::block_position;
-      if (result.code == chratos::process_result::progress)
-      {
-        auto account (ledger.store.frontier_get (transaction, block_a.hashables.previous));
-        result.code = account.is_zero () ? chratos::process_result::fork : chratos::process_result::progress;
-        if (result.code == chratos::process_result::progress)
-        {
-          chratos::account_info info;
-          auto latest_error (ledger.store.account_get (transaction, account, info));
-          assert (!latest_error);
-          assert (info.head == block_a.hashables.previous);
-          result.code = validate_message (account, hash, block_a.signature) ? chratos::process_result::bad_signature : chratos::process_result::progress; // Is this block signed correctly (Malformed)
-          if (result.code == chratos::process_result::progress)
-          {
-            ledger.store.block_put (transaction, hash, block_a);
-            auto balance (ledger.balance (transaction, block_a.hashables.previous));
-            ledger.store.representation_add (transaction, hash, balance);
-            ledger.store.representation_add (transaction, info.rep_block, 0 - balance);
-            ledger.change_latest (transaction, account, hash, hash, block_a.hashables.dividend, info.balance, info.block_count + 1);
-            ledger.store.frontier_del (transaction, block_a.hashables.previous);
-            ledger.store.frontier_put (transaction, hash, account);
-            result.account = account;
-            result.amount = 0;
-            ledger.stats.inc (chratos::stat::type::ledger, chratos::stat::detail::change);
-          }
-        }
-      }
-    }
-  }
 }
 
 void ledger_processor::send_block (chratos::send_block const & block_a)
 {
-  auto hash (block_a.hash ());
-  auto existing (ledger.store.block_exists (transaction, hash));
-  result.code = existing ? chratos::process_result::old : chratos::process_result::progress; // Have we seen this block before? (Harmless)
-  if (result.code == chratos::process_result::progress)
-  {
-    auto previous (ledger.store.block_get (transaction, block_a.hashables.previous));
-    result.code = previous != nullptr ? chratos::process_result::progress : chratos::process_result::gap_previous; // Have we seen the previous block already? (Harmless)
-    if (result.code == chratos::process_result::progress)
-    {
-      result.code = block_a.valid_predecessor (*previous) ? chratos::process_result::progress : chratos::process_result::block_position;
-      if (result.code == chratos::process_result::progress)
-      {
-        auto account (ledger.store.frontier_get (transaction, block_a.hashables.previous));
-        result.code = account.is_zero () ? chratos::process_result::fork : chratos::process_result::progress;
-        if (result.code == chratos::process_result::progress)
-        {
-          result.code = validate_message (account, hash, block_a.signature) ? chratos::process_result::bad_signature : chratos::process_result::progress; // Is this block signed correctly (Malformed)
-          if (result.code == chratos::process_result::progress)
-          {
-            chratos::account_info info;
-            auto latest_error (ledger.store.account_get (transaction, account, info));
-            assert (!latest_error);
-            assert (info.head == block_a.hashables.previous);
-            result.code = info.balance.number () >= block_a.hashables.balance.number () ? chratos::process_result::progress : chratos::process_result::negative_spend; // Is this trying to spend a negative amount (Malicious)
-            if (result.code == chratos::process_result::progress)
-            {
-              auto amount (info.balance.number () - block_a.hashables.balance.number ());
-              ledger.store.representation_add (transaction, info.rep_block, 0 - amount);
-              ledger.store.block_put (transaction, hash, block_a);
-              ledger.change_latest (transaction, account, hash, info.rep_block, block_a.hashables.dividend, block_a.hashables.balance, info.block_count + 1);
-              ledger.store.pending_put (transaction, chratos::pending_key (block_a.hashables.destination, hash), { account, amount, block_a.hashables.dividend, chratos::epoch::epoch_0 });
-              ledger.store.frontier_del (transaction, block_a.hashables.previous);
-              ledger.store.frontier_put (transaction, hash, account);
-              result.account = account;
-              result.amount = amount;
-              result.pending_account = block_a.hashables.destination;
-              ledger.stats.inc (chratos::stat::type::ledger, chratos::stat::detail::send);
-            }
-          }
-        }
-      }
-    }
-  }
-}/
+}
 
 void ledger_processor::receive_block (chratos::receive_block const & block_a)
 {
-  auto hash (block_a.hash ());
-  auto existing (ledger.store.block_exists (transaction, hash));
-  result.code = existing ? chratos::process_result::old : chratos::process_result::progress; // Have we seen this block already?  (Harmless)
-  if (result.code == chratos::process_result::progress)
-  {
-    auto previous (ledger.store.block_get (transaction, block_a.hashables.previous));
-    result.code = previous != nullptr ? chratos::process_result::progress : chratos::process_result::gap_previous;
-    if (result.code == chratos::process_result::progress)
-    {
-      result.code = block_a.valid_predecessor (*previous) ? chratos::process_result::progress : chratos::process_result::block_position;
-      if (result.code == chratos::process_result::progress)
-      {
-        result.code = ledger.store.block_exists (transaction, block_a.hashables.source) ? chratos::process_result::progress : chratos::process_result::gap_source; // Have we seen the source block already? (Harmless)
-        if (result.code == chratos::process_result::progress)
-        {
-          auto account (ledger.store.frontier_get (transaction, block_a.hashables.previous));
-          result.code = account.is_zero () ? chratos::process_result::gap_previous : chratos::process_result::progress; //Have we seen the previous block? No entries for account at all (Harmless)
-          if (result.code == chratos::process_result::progress)
-          {
-            result.code = chratos::validate_message (account, hash, block_a.signature) ? chratos::process_result::bad_signature : chratos::process_result::progress; // Is the signature valid (Malformed)
-            if (result.code == chratos::process_result::progress)
-            {
-              chratos::account_info info;
-              ledger.store.account_get (transaction, account, info);
-              result.code = info.head == block_a.hashables.previous ? chratos::process_result::progress : chratos::process_result::gap_previous; // Block doesn't immediately follow latest block (Harmless)
-              if (result.code == chratos::process_result::progress)
-              {
-                chratos::pending_key key (account, block_a.hashables.source);
-                chratos::pending_info pending;
-                result.code = ledger.store.pending_get (transaction, key, pending) ? chratos::process_result::unreceivable : chratos::process_result::progress; // Has this source already been received (Malformed)
-                if (result.code == chratos::process_result::progress)
-                {
-                  result.code = pending.epoch == chratos::epoch::epoch_0 ? chratos::process_result::progress : chratos::process_result::unreceivable; // Are we receiving a state-only send? (Malformed)
-                  if (result.code == chratos::process_result::progress)
-                  {
-                    auto new_balance (info.balance.number () + pending.amount.number ());
-                    chratos::account_info source_info;
-                    auto error (ledger.store.account_get (transaction, pending.source, source_info));
-                    assert (!error);
-                    ledger.store.pending_del (transaction, key);
-                    ledger.store.block_put (transaction, hash, block_a);
-                    ledger.change_latest (transaction, account, hash, info.rep_block, block_a.hashables.dividend, new_balance, info.block_count + 1);
-                    ledger.store.representation_add (transaction, info.rep_block, pending.amount.number ());
-                    ledger.store.frontier_del (transaction, block_a.hashables.previous);
-                    ledger.store.frontier_put (transaction, hash, account);
-                    result.account = account;
-                    result.amount = pending.amount;
-                    ledger.stats.inc (chratos::stat::type::ledger, chratos::stat::detail::receive);
-                  }
-                }
-              }
-            }
-          }
-          else
-          {
-            result.code = ledger.store.block_exists (transaction, block_a.hashables.previous) ? chratos::process_result::fork : chratos::process_result::gap_previous; // If we have the block but it's not the latest we have a signed fork (Malicious)
-          }
-        }
-      }
-    }
-  }
 }
 
 void ledger_processor::open_block (chratos::open_block const & block_a)
 {
-  auto hash (block_a.hash ());
-  auto existing (ledger.store.block_exists (transaction, hash));
-  result.code = existing ? chratos::process_result::old : chratos::process_result::progress; // Have we seen this block already? (Harmless)
-  if (result.code == chratos::process_result::progress)
-  {
-    auto source_missing (!ledger.store.block_exists (transaction, block_a.hashables.source));
-    result.code = source_missing ? chratos::process_result::gap_source : chratos::process_result::progress; // Have we seen the source block? (Harmless)
-    if (result.code == chratos::process_result::progress)
-    {
-      result.code = chratos::validate_message (block_a.hashables.account, hash, block_a.signature) ? chratos::process_result::bad_signature : chratos::process_result::progress; // Is the signature valid (Malformed)
-      if (result.code == chratos::process_result::progress)
-      {
-        chratos::account_info info;
-        result.code = ledger.store.account_get (transaction, block_a.hashables.account, info) ? chratos::process_result::progress : chratos::process_result::fork; // Has this account already been opened? (Malicious)
-        if (result.code == chratos::process_result::progress)
-        {
-          chratos::pending_key key (block_a.hashables.account, block_a.hashables.source);
-          chratos::pending_info pending;
-          result.code = ledger.store.pending_get (transaction, key, pending) ? chratos::process_result::unreceivable : chratos::process_result::progress; // Has this source already been received (Malformed)
-          if (result.code == chratos::process_result::progress)
-          {
-            result.code = block_a.hashables.account == chratos::burn_account ? chratos::process_result::opened_burn_account : chratos::process_result::progress; // Is it burning 0 account? (Malicious)
-            if (result.code == chratos::process_result::progress)
-            {
-              result.code = pending.epoch == chratos::epoch::epoch_0 ? chratos::process_result::progress : chratos::process_result::unreceivable; // Are we receiving a state-only send? (Malformed)
-              if (result.code == chratos::process_result::progress)
-              {
-                chratos::account_info source_info;
-                auto error (ledger.store.account_get (transaction, pending.source, source_info));
-                assert (!error);
-                ledger.store.pending_del (transaction, key);
-                ledger.store.block_put (transaction, hash, block_a);
-                ledger.change_latest (transaction, block_a.hashables.account, hash, hash, block_a.hashables.dividend, pending.amount.number (), info.block_count + 1);
-                ledger.store.representation_add (transaction, hash, pending.amount.number ());
-                ledger.store.frontier_put (transaction, hash, block_a.hashables.account);
-                result.account = block_a.hashables.account;
-                result.amount = pending.amount;
-                ledger.stats.inc (chratos::stat::type::ledger, chratos::stat::detail::open);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
 }
 
 void ledger_processor::dividend_block (chratos::dividend_block const & block_a)
@@ -722,10 +543,10 @@ void ledger_processor::claim_block (chratos::claim_block const & block_a)
               result.code = info.head == block_a.hashables.previous ? chratos::process_result::progress : chratos::process_result::gap_previous; // Block doesn't immediately follow latest block (Harmless)
               if (result.code == chratos::process_result::progress)
               {
-                result.code = ledger.has_outstanding_pendings_for_dividend (transaction, block_a.hashables.dividend, account) ? chratos::process_result::outstanding_pendings : chratos::process_result::progress;
+                result.code = ledger.has_outstanding_pendings_for_dividend (transaction, div_block->hashables.dividend, account) ? chratos::process_result::outstanding_pendings : chratos::process_result::progress;
                 if (result.code == chratos::process_result::progress)
                 {
-                  result.code = info.dividend_block != block_a.hashables.dividend && ledger.dividends_are_ordered (transaction, info.dividend_block, block_a.hashables.dividend) ? chratos::process_result::progress : chratos::process_result::unreceivable; // Hash this dividend been claimed already.
+                  result.code = info.dividend_block == div_block->hashables.dividend  ? chratos::process_result::progress : chratos::process_result::unreceivable; // Hash this dividend been claimed already.
                   if (result.code == chratos::process_result::progress)
                   {
                     result.amount = block_a.hashables.balance.number () - info.balance.number ();
@@ -938,7 +759,8 @@ bool chratos::ledger::has_outstanding_pendings_for_dividend (MDB_txn * transacti
   for (auto i (store.pending_begin (transaction_a, chratos::pending_key (account_a, 0))), n (store.pending_begin (transaction_a, chratos::pending_key (end, 0))); i != n && !result; ++i) 
   {
     chratos::pending_info info (i->second);
-    if (info.dividend == dividend_a) {
+    auto block (store.block_get (transaction_a, i->first.hash));
+    if (block->dividend () == dividend_a) {
       result = true;
     }
   }
@@ -988,8 +810,6 @@ chratos::amount chratos::ledger::amount_for_dividend (MDB_txn * transaction_a, c
       chratos::amount genesis_supply (std::numeric_limits<chratos::uint128_t>::max ());
       chratos::amount burned_amount (burn_account_balance (transaction_a, dividend_a));
       chratos::amount balance_at_dividend (account_info.balance);
-      //chratos::amount previous_balance (balance (transaction_a, block_l->previous ()));
-      //chratos::amount dividend_balance (balance (transaction_a, block_l->hash ()));
       chratos::amount dividend_amount (amount (transaction_a, block_l->hash ()));
       chratos::amount total_supply (genesis_supply.number () - burned_amount.number ());
       boost::multiprecision::cpp_bin_float_100 balance_f (balance_at_dividend.number ());
@@ -1044,13 +864,13 @@ chratos::amount chratos::ledger::burn_account_balance (MDB_txn * transaction_a, 
 
   std::shared_ptr<chratos::block> dividend = store.block_get (transaction_a, dividend_a);
 
-  chratos::block_hash 
+  chratos::block_hash previous = dividend->dividend ();
 
   chratos::account end (burn.number () + 1);
   for (auto i (store.pending_v0_begin (transaction_a, chratos::pending_key (burn, 0))), n (store.pending_v0_begin (transaction_a, chratos::pending_key (end, 0))); i != n; ++i)
   {
     auto pending_info = i->second;
-    if (dividends_are_ordered(pending_info.dividend, dividend) && pending_info.dividend != dividend)
+    if (dividends_are_ordered (transaction_a, pending_info.dividend, previous))
     {
       result = result.number () + pending_info.amount.number ();
     }

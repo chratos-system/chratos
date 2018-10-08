@@ -359,7 +359,7 @@ bool chratos::pending_info::deserialize (chratos::stream & stream_a)
 		result = chratos::read (stream_a, amount.bytes);
     if (!result)
     {
-      result = chratos::read (stream_a, dividend.bytes);
+      result = chratos::read (stream_a, dividend);
     }
 	}
 	return result;

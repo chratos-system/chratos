@@ -113,6 +113,7 @@ enum class error_process
   dividend_too_small, // The amount being sent as a dividend is too small
   dividend_fork, // Malicious or timed fork based on previous dividend
   invalid_dividend_account, // Malicious spend from an unauthorized account
+  outstanding_pendings,
 	other
 };
 }
