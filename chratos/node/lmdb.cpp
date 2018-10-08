@@ -198,42 +198,6 @@ chratos::mdb_val::operator std::shared_ptr<chratos::block> () const
 	return result;
 }
 
-chratos::mdb_val::operator std::shared_ptr<chratos::send_block> () const
-{
-	chratos::bufferstream stream (reinterpret_cast<uint8_t const *> (value.mv_data), value.mv_size);
-	auto error (false);
-	std::shared_ptr<chratos::send_block> result (std::make_shared<chratos::send_block> (error, stream));
-	assert (!error);
-	return result;
-}
-
-chratos::mdb_val::operator std::shared_ptr<chratos::receive_block> () const
-{
-	chratos::bufferstream stream (reinterpret_cast<uint8_t const *> (value.mv_data), value.mv_size);
-	auto error (false);
-	std::shared_ptr<chratos::receive_block> result (std::make_shared<chratos::receive_block> (error, stream));
-	assert (!error);
-	return result;
-}
-
-chratos::mdb_val::operator std::shared_ptr<chratos::open_block> () const
-{
-	chratos::bufferstream stream (reinterpret_cast<uint8_t const *> (value.mv_data), value.mv_size);
-	auto error (false);
-	std::shared_ptr<chratos::open_block> result (std::make_shared<chratos::open_block> (error, stream));
-	assert (!error);
-	return result;
-}
-
-chratos::mdb_val::operator std::shared_ptr<chratos::change_block> () const
-{
-	chratos::bufferstream stream (reinterpret_cast<uint8_t const *> (value.mv_data), value.mv_size);
-	auto error (false);
-	std::shared_ptr<chratos::change_block> result (std::make_shared<chratos::change_block> (error, stream));
-	assert (!error);
-	return result;
-}
-
 chratos::mdb_val::operator std::shared_ptr<chratos::state_block> () const
 {
 	chratos::bufferstream stream (reinterpret_cast<uint8_t const *> (value.mv_data), value.mv_size);

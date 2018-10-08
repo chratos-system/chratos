@@ -28,9 +28,11 @@ char const * beta_dividend_public_key_data = "B1305346B0A56ADAAF27801AC4DE813B55
 char const * live_dividend_public_key_data = "77D1F41B65EA66F53C023F263E805235FB8E149ECE39B944F4F3492CDDBA57A4"; // chr_1xyjyifpdtm8yny16hs89t176fhujrcbxmjsq74hbwtb7mgunox6mgoodx1a
 
 char const * test_genesis_data = R"%%%({
-	"type": "open",
-	"source": "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0",
+	"type": "state",
+  "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+	"link": "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0",
 	"representative": "chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
+  "balance": "340282366920938463463374607431768211455",
 	"account": "chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
 	"work": "9680625b39d3363d",
   "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -38,19 +40,23 @@ char const * test_genesis_data = R"%%%({
 })%%%";
 
 char const * beta_genesis_data = R"%%%({
-  "type": "open",
-  "source": "5DB43C7501AC8C1CE5C21C9CF4F2EA1973205F315BF419BD3401B2D3A009740D",
+  "type": "state",
+  "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+  "link": "5DB43C7501AC8C1CE5C21C9CF4F2EA1973205F315BF419BD3401B2D3A009740D",
   "representative": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
+  "balance": "340282366920938463463374607431768211455",
   "account": "chr_1qfn9jti5d6e5mkw696wymsgn8dm63hm4pzn58yma1fktgi1kx1f9c5b35gb",
   "work": "4a18a369468685b2",
   "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
-  "signature": "BBCF0BC4873D0007F338A980BC9BEDB1481B19507244E063DBB488BDB2977929F83E1300202DC6D997D8FDC2AA055D7123345698F580BF9A44104D0EAD8CDC0A"
+  "signature": "8DEF608772F136C6430088DA4AD52EED3B22B6CCC3115D92507BC55C323E83EC7E838DD3804100B86AA63B5D26593742036B2E9D2FBF52EB388103D66705760F"
 })%%%";
 
 char const * live_genesis_data = R"%%%({
-	"type": "open",
-	"source": "7E5EB032362A11DC9A591E53A12F9E231BE8FD5B25F1BAA4BAA44508DCAA0181",
+	"type": "state",
+  "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+	"link": "7E5EB032362A11DC9A591E53A12F9E231BE8FD5B25F1BAA4BAA44508DCAA0181",
 	"representative": "chr_1zkyp1s5ecijukf7k9kmn6qswarux5yopbhjqckdob4735gcn1e34rpi75p4",
+  "balance": "340282366920938463463374607431768211455",
 	"account": "chr_1zkyp1s5ecijukf7k9kmn6qswarux5yopbhjqckdob4735gcn1e34rpi75p4",
 	"work": "ace2c7809d970ebd",
   "dividend": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -107,11 +113,9 @@ public:
 ledger_constants globals;
 }
 
-size_t constexpr chratos::send_block::size;
-size_t constexpr chratos::receive_block::size;
-size_t constexpr chratos::open_block::size;
-size_t constexpr chratos::change_block::size;
 size_t constexpr chratos::state_block::size;
+size_t constexpr chratos::dividend_block::size;
+size_t constexpr chratos::claim_block::size;
 
 chratos::keypair const & chratos::zero_key (globals.zero_key);
 chratos::keypair const & chratos::test_genesis_key (globals.test_genesis_key);
@@ -312,10 +316,6 @@ size_t chratos::dividend_info::db_size () const
 }
 
 chratos::block_counts::block_counts () :
-send (0),
-receive (0),
-open (0),
-change (0),
 state_v0 (0),
 state_v1 (0),
 dividend (0),
@@ -325,7 +325,7 @@ claim (0)
 
 size_t chratos::block_counts::sum ()
 {
-	return send + receive + open + change + state_v0 + state_v1 + dividend + claim;
+	return state_v0 + state_v1 + dividend + claim;
 }
 
 chratos::pending_info::pending_info () :
@@ -510,31 +510,6 @@ amount (0)
 {
 }
 
-void chratos::amount_visitor::send_block (chratos::send_block const & block_a)
-{
-	current_balance = block_a.hashables.previous;
-	amount = block_a.hashables.balance.number ();
-	current_amount = 0;
-}
-
-void chratos::amount_visitor::receive_block (chratos::receive_block const & block_a)
-{
-	current_amount = block_a.hashables.source;
-}
-
-void chratos::amount_visitor::open_block (chratos::open_block const & block_a)
-{
-	if (block_a.hashables.source != chratos::genesis_account)
-	{
-		current_amount = block_a.hashables.source;
-	}
-	else
-	{
-		amount = chratos::genesis_amount;
-		current_amount = 0;
-	}
-}
-
 void chratos::amount_visitor::state_block (chratos::state_block const & block_a)
 {
 	current_balance = block_a.hashables.previous;
@@ -553,12 +528,6 @@ void chratos::amount_visitor::claim_block (chratos::claim_block const & block_a)
 {
 	current_balance = block_a.hashables.previous;
 	amount = block_a.hashables.balance.number ();
-	current_amount = 0;
-}
-
-void chratos::amount_visitor::change_block (chratos::change_block const & block_a)
-{
-	amount = 0;
 	current_amount = 0;
 }
 
@@ -606,47 +575,6 @@ current_balance (0),
 current_amount (0),
 balance (0)
 {
-}
-
-void chratos::balance_visitor::send_block (chratos::send_block const & block_a)
-{
-	balance += block_a.hashables.balance.number ();
-	current_balance = 0;
-}
-
-void chratos::balance_visitor::receive_block (chratos::receive_block const & block_a)
-{
-	chratos::block_info block_info;
-	if (!store.block_info_get (transaction, block_a.hash (), block_info))
-	{
-		balance += block_info.balance.number ();
-		current_balance = 0;
-	}
-	else
-	{
-		current_amount = block_a.hashables.source;
-		current_balance = block_a.hashables.previous;
-	}
-}
-
-void chratos::balance_visitor::open_block (chratos::open_block const & block_a)
-{
-	current_amount = block_a.hashables.source;
-	current_balance = 0;
-}
-
-void chratos::balance_visitor::change_block (chratos::change_block const & block_a)
-{
-	chratos::block_info block_info;
-	if (!store.block_info_get (transaction, block_a.hash (), block_info))
-	{
-		balance += block_info.balance.number ();
-		current_balance = 0;
-	}
-	else
-	{
-		current_balance = block_a.hashables.previous;
-	}
 }
 
 void chratos::balance_visitor::state_block (chratos::state_block const & block_a)
@@ -704,26 +632,6 @@ void chratos::representative_visitor::compute (chratos::block_hash const & hash_
 		assert (block != nullptr);
 		block->visit (*this);
 	}
-}
-
-void chratos::representative_visitor::send_block (chratos::send_block const & block_a)
-{
-	current = block_a.previous ();
-}
-
-void chratos::representative_visitor::receive_block (chratos::receive_block const & block_a)
-{
-	current = block_a.previous ();
-}
-
-void chratos::representative_visitor::open_block (chratos::open_block const & block_a)
-{
-	result = block_a.hash ();
-}
-
-void chratos::representative_visitor::change_block (chratos::change_block const & block_a)
-{
-	result = block_a.hash ();
 }
 
 void chratos::representative_visitor::state_block (chratos::state_block const & block_a)
@@ -986,8 +894,8 @@ chratos::genesis::genesis ()
 	std::stringstream istream (chratos::genesis_block);
 	boost::property_tree::read_json (istream, tree);
 	auto block (chratos::deserialize_block_json (tree));
-	assert (dynamic_cast<chratos::open_block *> (block.get ()) != nullptr);
-	open.reset (static_cast<chratos::open_block *> (block.release ()));
+	assert (dynamic_cast<chratos::state_block *> (block.get ()) != nullptr);
+	open.reset (static_cast<chratos::state_block *> (block.release ()));
 }
 
 chratos::block_hash chratos::genesis::hash () const

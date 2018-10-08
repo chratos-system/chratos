@@ -87,7 +87,7 @@ int main (int argc, char * const * argv)
 					}
 					chratos::uint128_t balance (std::numeric_limits<chratos::uint128_t>::max ());
           chratos::block_hash dividend (0);
-					chratos::open_block genesis_block (genesis.pub, genesis.pub, genesis.pub, dividend, genesis.prv, genesis.pub, work.generate (genesis.pub));
+					chratos::state_block genesis_block (genesis.pub, 0, genesis.pub, balance, genesis.pub, dividend, genesis.prv, genesis.pub, work.generate (genesis.pub));
 					std::cout << genesis_block.to_json ();
 					chratos::block_hash previous (genesis_block.hash ());
 					for (auto i (0); i != 8; ++i)
@@ -98,7 +98,7 @@ int main (int argc, char * const * argv)
 						{
 							assert (balance > weekly_distribution);
 							balance = balance < (weekly_distribution * 2) ? 0 : balance - weekly_distribution;
-							chratos::send_block send (previous, landing.pub, balance, dividend, genesis.prv, genesis.pub, work.generate (previous));
+							chratos::state_block send (genesis.pub, previous, genesis.pub, balance, landing.pub, dividend, genesis.prv, genesis.pub, work.generate (previous));
 							previous = send.hash ();
 							std::cout << send.to_json ();
 							std::cout.flush ();
@@ -172,7 +172,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_profile_generate"))
 		{
 			chratos::work_pool work (std::numeric_limits<unsigned>::max (), nullptr);
-			chratos::change_block block (0, 0, 0, chratos::keypair ().prv, 0, 0);
+			chratos::state_block block (0, 0, 0, 0, 0, 0, chratos::keypair ().prv, 0, 0);
 			std::cerr << "Starting generation profiling\n";
 			for (uint64_t i (0); true; ++i)
 			{
@@ -242,7 +242,7 @@ int main (int argc, char * const * argv)
 								return opencl->generate_work (root_a);
 							}
 							                                                                        : std::function<boost::optional<uint64_t> (chratos::uint256_union const &)> (nullptr));
-							chratos::change_block block (0, 0, 0, chratos::keypair ().prv, 0, 0);
+							chratos::state_block block (0, 0, 0, 0, 0, 0, chratos::keypair ().prv, 0, 0);
 							std::cerr << boost::str (boost::format ("Starting OpenCL generation profiling. Platform: %1%. Device: %2%. Threads: %3%\n") % platform % device % threads);
 							for (uint64_t i (0); true; ++i)
 							{
@@ -277,7 +277,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_profile_verify"))
 		{
 			chratos::work_pool work (std::numeric_limits<unsigned>::max (), nullptr);
-			chratos::change_block block (0, 0, 0, chratos::keypair ().prv, 0, 0);
+			chratos::state_block block (0, 0, 0, 0, 0, 0, chratos::keypair ().prv, 0, 0);
 			std::cerr << "Starting verification profiling\n";
 			for (uint64_t i (0); true; ++i)
 			{
@@ -318,7 +318,7 @@ int main (int argc, char * const * argv)
 				auto begin1 (std::chrono::high_resolution_clock::now ());
 				for (uint64_t balance (0); balance < 1000; ++balance)
 				{
-					chratos::send_block send (latest, key.pub, balance, dividend, key.prv, key.pub, 0);
+					chratos::state_block send (key.pub, latest, key.pub, balance, key.pub, dividend, key.prv, key.pub, 0);
 					latest = send.hash ();
 				}
 				auto end1 (std::chrono::high_resolution_clock::now ());

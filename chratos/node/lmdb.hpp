@@ -55,10 +55,6 @@ public:
   explicit operator std::array<char, 64> () const;
   explicit operator no_value () const;
   explicit operator std::shared_ptr<chratos::block> () const;
-  explicit operator std::shared_ptr<chratos::send_block> () const;
-  explicit operator std::shared_ptr<chratos::receive_block> () const;
-  explicit operator std::shared_ptr<chratos::open_block> () const;
-  explicit operator std::shared_ptr<chratos::change_block> () const;
   explicit operator std::shared_ptr<chratos::state_block> () const;
   explicit operator std::shared_ptr<chratos::dividend_block> () const;
   explicit operator std::shared_ptr<chratos::claim_block> () const;
@@ -94,10 +90,6 @@ public:
   balance_visitor (MDB_txn *, chratos::block_store &);
   virtual ~balance_visitor () = default;
   void compute (chratos::block_hash const &);
-  void send_block (chratos::send_block const &) override;
-  void receive_block (chratos::receive_block const &) override;
-  void open_block (chratos::open_block const &) override;
-  void change_block (chratos::change_block const &) override;
   void state_block (chratos::state_block const &) override;
   void dividend_block (chratos::dividend_block const &) override;
   void claim_block (chratos::claim_block const &) override;
@@ -117,10 +109,6 @@ public:
   amount_visitor (MDB_txn *, chratos::block_store &);
   virtual ~amount_visitor () = default;
   void compute (chratos::block_hash const &);
-  void send_block (chratos::send_block const &) override;
-  void receive_block (chratos::receive_block const &) override;
-  void open_block (chratos::open_block const &) override;
-  void change_block (chratos::change_block const &) override;
   void state_block (chratos::state_block const &) override;
   void dividend_block (chratos::dividend_block const &) override;
   void claim_block (chratos::claim_block const &) override;
@@ -141,10 +129,6 @@ public:
   representative_visitor (MDB_txn * transaction_a, chratos::block_store & store_a);
   virtual ~representative_visitor () = default;
   void compute (chratos::block_hash const & hash_a);
-  void send_block (chratos::send_block const & block_a) override;
-  void receive_block (chratos::receive_block const & block_a) override;
-  void open_block (chratos::open_block const & block_a) override;
-  void change_block (chratos::change_block const & block_a) override;
   void state_block (chratos::state_block const & block_a) override;
   void dividend_block (chratos::dividend_block const & block_a) override;
   void claim_block (chratos::claim_block const & block_a) override;

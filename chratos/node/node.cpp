@@ -2914,19 +2914,6 @@ public:
   {
     scan_receivable (block_a.hashables.link);
   }
-  void send_block (chratos::send_block const & block_a) override
-  {
-    scan_receivable (block_a.hashables.destination);
-  }
-  void receive_block (chratos::receive_block const &) override
-  {
-  }
-  void open_block (chratos::open_block const &) override
-  {
-  }
-  void change_block (chratos::change_block const &) override
-  {
-  }
   void dividend_block (chratos::dividend_block const & block_a) override
   {
     claim_dividend (block_a);
@@ -2967,10 +2954,6 @@ void chratos::node::process_confirmed (std::shared_ptr<chratos::block> block_a)
     {
       is_state_send = ledger.is_send (transaction, *state);
       pending_account = state->hashables.link;
-    }
-    if (auto send = dynamic_cast<chratos::send_block *> (block_a.get ()))
-    {
-      pending_account = send->hashables.destination;
     }
     observers.blocks.notify (block_a, account, amount, is_state_send);
     if (amount > 0)

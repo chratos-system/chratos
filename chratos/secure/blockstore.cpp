@@ -31,22 +31,6 @@ public:
 		std::copy (hash.bytes.begin (), hash.bytes.end (), data.end () - hash.bytes.size ());
 		store.block_raw_put (transaction, store.block_database (type, version), block_a.previous (), chratos::mdb_val (data.size (), data.data ()));
 	}
-	void send_block (chratos::send_block const & block_a) override
-	{
-		fill_value (block_a);
-	}
-	void receive_block (chratos::receive_block const & block_a) override
-	{
-		fill_value (block_a);
-	}
-	void open_block (chratos::open_block const & block_a) override
-	{
-		// Open blocks don't have a predecessor
-	}
-	void change_block (chratos::change_block const & block_a) override
-	{
-		fill_value (block_a);
-	}
 	void state_block (chratos::state_block const & block_a) override
 	{
 		if (!block_a.previous ().is_zero ())
@@ -418,10 +402,6 @@ frontiers (0),
 accounts_v0 (0),
 accounts_v1 (0),
 dividends_ledger (0),
-send_blocks (0),
-receive_blocks (0),
-open_blocks (0),
-change_blocks (0),
 dividend_blocks (0),
 claim_blocks (0),
 state_blocks_v0 (0),
@@ -807,18 +787,6 @@ MDB_dbi chratos::block_store::block_database (chratos::block_type type_a, chrato
 	MDB_dbi result;
 	switch (type_a)
 	{
-		case chratos::block_type::send:
-			result = send_blocks;
-			break;
-		case chratos::block_type::receive:
-			result = receive_blocks;
-			break;
-		case chratos::block_type::open:
-			result = open_blocks;
-			break;
-		case chratos::block_type::change:
-			result = change_blocks;
-			break;
 		case chratos::block_type::state:
 			switch (epoch_a)
 			{
@@ -869,80 +837,44 @@ void chratos::block_store::block_put (MDB_txn * transaction_a, chratos::block_ha
 MDB_val chratos::block_store::block_raw_get (MDB_txn * transaction_a, chratos::block_hash const & hash_a, chratos::block_type & type_a)
 {
 	chratos::mdb_val result;
-	auto status (mdb_get (transaction_a, send_blocks, chratos::mdb_val (hash_a), result));
-	assert (status == 0 || status == MDB_NOTFOUND);
-	if (status != 0)
-	{
-		auto status (mdb_get (transaction_a, receive_blocks, chratos::mdb_val (hash_a), result));
-		assert (status == 0 || status == MDB_NOTFOUND);
-		if (status != 0)
-		{
-			auto status (mdb_get (transaction_a, open_blocks, chratos::mdb_val (hash_a), result));
-			assert (status == 0 || status == MDB_NOTFOUND);
-			if (status != 0)
-			{
-				auto status (mdb_get (transaction_a, change_blocks, chratos::mdb_val (hash_a), result));
-				assert (status == 0 || status == MDB_NOTFOUND);
-				if (status != 0)
-				{
-					auto status (mdb_get (transaction_a, state_blocks_v0, chratos::mdb_val (hash_a), result));
-					assert (status == 0 || status == MDB_NOTFOUND);
-					if (status != 0)
-					{
-						auto status (mdb_get (transaction_a, state_blocks_v1, chratos::mdb_val (hash_a), result));
-						assert (status == 0 || status == MDB_NOTFOUND);
-						if (status != 0)
-						{
-              auto status (mdb_get (transaction_a, dividend_blocks, chratos::mdb_val (hash_a), result));
-              assert (status == 0 || status == MDB_NOTFOUND);
-              if (status != 0)
-              {
-                auto status (mdb_get (transaction_a, claim_blocks, chratos::mdb_val (hash_a), result));
-                assert (status == 0 || status == MDB_NOTFOUND);
-                if (status != 0)
-                {
-                  // Block not found
-                }
-                else
-                {
-                  type_a = chratos::block_type::claim;
-                }
-              }
-              else
-              {
-                type_a = chratos::block_type::dividend;
-              }
-						}
-						else
-						{
-							type_a = chratos::block_type::state;
-						}
-					}
-					else
-					{
-						type_a = chratos::block_type::state;
-					}
-				}
-				else
-				{
-					type_a = chratos::block_type::change;
-				}
-			}
-			else
-			{
-				type_a = chratos::block_type::open;
-			}
-		}
-		else
-		{
-			type_a = chratos::block_type::receive;
-		}
-	}
-	else
-	{
-		type_a = chratos::block_type::send;
-	}
-	return result;
+  auto status (mdb_get (transaction_a, state_blocks_v0, chratos::mdb_val (hash_a), result));
+  assert (status == 0 || status == MDB_NOTFOUND);
+  if (status != 0)
+  {
+    auto status (mdb_get (transaction_a, state_blocks_v1, chratos::mdb_val (hash_a), result));
+    assert (status == 0 || status == MDB_NOTFOUND);
+    if (status != 0)
+    {
+      auto status (mdb_get (transaction_a, dividend_blocks, chratos::mdb_val (hash_a), result));
+      assert (status == 0 || status == MDB_NOTFOUND);
+      if (status != 0)
+      {
+        auto status (mdb_get (transaction_a, claim_blocks, chratos::mdb_val (hash_a), result));
+        assert (status == 0 || status == MDB_NOTFOUND);
+        if (status != 0)
+        {
+          // Block not found
+        }
+        else
+        {
+          type_a = chratos::block_type::claim;
+        }
+      }
+      else
+      {
+        type_a = chratos::block_type::dividend;
+      }
+    }
+    else
+    {
+      type_a = chratos::block_type::state;
+    }
+  }
+  else
+  {
+    type_a = chratos::block_type::state;
+  }
+  return result;
 }
 
 template <typename T>
@@ -965,62 +897,30 @@ std::unique_ptr<chratos::block> chratos::block_store::block_random (MDB_txn * tr
 	auto count (block_count (transaction_a));
 	auto region (chratos::random_pool.GenerateWord32 (0, count.sum () - 1));
 	std::unique_ptr<chratos::block> result;
-	if (region < count.send)
-	{
-		result = block_random<chratos::send_block> (transaction_a, send_blocks);
-	}
-	else
-	{
-		region -= count.send;
-		if (region < count.receive)
-		{
-			result = block_random<chratos::receive_block> (transaction_a, receive_blocks);
-		}
-		else
-		{
-			region -= count.receive;
-			if (region < count.open)
-			{
-				result = block_random<chratos::open_block> (transaction_a, open_blocks);
-			}
-			else
-			{
-				region -= count.open;
-				if (region < count.change)
-				{
-					result = block_random<chratos::change_block> (transaction_a, change_blocks);
-				}
-				else
-				{
-					region -= count.change;
-					if (region < count.state_v0)
-					{
-						result = block_random<chratos::state_block> (transaction_a, state_blocks_v0);
-					}
-					else
-					{
-            region -= count.state_v0;
-            if (region < count.state_v1)
-            {
-						result = block_random<chratos::state_block> (transaction_a, state_blocks_v1);
-            }
-            else
-            {
-              region -= count.state_v1;
-              if (region < count.dividend)
-              {
-                result = block_random<chratos::dividend_block> (transaction_a, dividend_blocks);
-              }
-              else
-              {
-                result = block_random<chratos::claim_block> (transaction_a, claim_blocks);
-              }
-            }
-					}
-				}
-			}
-		}
-	}
+  if (region < count.state_v0)
+  {
+    result = block_random<chratos::state_block> (transaction_a, state_blocks_v0);
+  }
+  else
+  {
+    region -= count.state_v0;
+    if (region < count.state_v1)
+    {
+      result = block_random<chratos::state_block> (transaction_a, state_blocks_v1);
+    }
+    else
+    {
+      region -= count.state_v1;
+      if (region < count.dividend)
+      {
+        result = block_random<chratos::dividend_block> (transaction_a, dividend_blocks);
+      }
+      else
+      {
+        result = block_random<chratos::claim_block> (transaction_a, claim_blocks);
+      }
+    }
+  }
 	assert (result != nullptr);
 	return result;
 }
@@ -1075,120 +975,60 @@ void chratos::block_store::block_del (MDB_txn * transaction_a, chratos::block_ha
 		assert (status == 0 || status == MDB_NOTFOUND);
 		if (status != 0)
 		{
-			auto status (mdb_del (transaction_a, send_blocks, chratos::mdb_val (hash_a), nullptr));
-			assert (status == 0 || status == MDB_NOTFOUND);
-			if (status != 0)
-			{
-				auto status (mdb_del (transaction_a, receive_blocks, chratos::mdb_val (hash_a), nullptr));
-				assert (status == 0 || status == MDB_NOTFOUND);
-				if (status != 0)
-				{
-					auto status (mdb_del (transaction_a, open_blocks, chratos::mdb_val (hash_a), nullptr));
-					assert (status == 0 || status == MDB_NOTFOUND);
-					if (status != 0)
-					{
-						auto status (mdb_del (transaction_a, change_blocks, chratos::mdb_val (hash_a), nullptr));
-						assert (status == 0 || status == MDB_NOTFOUND);
-            if (status != 0)
-            {
-              auto status (mdb_del (transaction_a, dividend_blocks, chratos::mdb_val (hash_a), nullptr));
-              assert (status == 0 || status == MDB_NOTFOUND);
-              if (status != 0)
-              {
-                auto status (mdb_del (transaction_a, claim_blocks, chratos::mdb_val (hash_a), nullptr));
-                assert (status == 0);
-              }
-            }
-					}
-				}
-			}
-		}
-	}
+      auto status (mdb_del (transaction_a, dividend_blocks, chratos::mdb_val (hash_a), nullptr));
+      assert (status == 0 || status == MDB_NOTFOUND);
+      if (status != 0)
+      {
+        auto status (mdb_del (transaction_a, claim_blocks, chratos::mdb_val (hash_a), nullptr));
+        assert (status == 0);
+      }
+    }
+  }
 }
 
 bool chratos::block_store::block_exists (MDB_txn * transaction_a, chratos::block_hash const & hash_a)
 {
 	auto exists (true);
 	chratos::mdb_val junk;
-	auto status (mdb_get (transaction_a, send_blocks, chratos::mdb_val (hash_a), junk));
-	assert (status == 0 || status == MDB_NOTFOUND);
-	exists = status == 0;
-	if (!exists)
-	{
-		auto status (mdb_get (transaction_a, receive_blocks, chratos::mdb_val (hash_a), junk));
-		assert (status == 0 || status == MDB_NOTFOUND);
-		exists = status == 0;
-		if (!exists)
-		{
-			auto status (mdb_get (transaction_a, open_blocks, chratos::mdb_val (hash_a), junk));
-			assert (status == 0 || status == MDB_NOTFOUND);
-			exists = status == 0;
-			if (!exists)
-			{
-				auto status (mdb_get (transaction_a, change_blocks, chratos::mdb_val (hash_a), junk));
-				assert (status == 0 || status == MDB_NOTFOUND);
-				exists = status == 0;
-				if (!exists)
-				{
-					auto status (mdb_get (transaction_a, state_blocks_v0, chratos::mdb_val (hash_a), junk));
-					assert (status == 0 || status == MDB_NOTFOUND);
-					exists = status == 0;
-					if (!exists)
-					{
-						auto status (mdb_get (transaction_a, state_blocks_v1, chratos::mdb_val (hash_a), junk));
-						assert (status == 0 || status == MDB_NOTFOUND);
-						exists = status == 0;
-            if (!exists)
-            {
-              auto status (mdb_get (transaction_a, dividend_blocks, chratos::mdb_val (hash_a), junk));
-              assert (status == 0 || status == MDB_NOTFOUND);
-              exists = status == 0;
-              if (!exists)
-              {
-                auto status (mdb_get (transaction_a, claim_blocks, chratos::mdb_val (hash_a), junk));
-                assert (status == 0 || status == MDB_NOTFOUND);
-                exists = status == 0;
-              }
-            }
-          }
-        }
-			}
-		}
-	}
+  auto status (mdb_get (transaction_a, state_blocks_v0, chratos::mdb_val (hash_a), junk));
+  assert (status == 0 || status == MDB_NOTFOUND);
+  exists = status == 0;
+  if (!exists)
+  {
+    auto status (mdb_get (transaction_a, state_blocks_v1, chratos::mdb_val (hash_a), junk));
+    assert (status == 0 || status == MDB_NOTFOUND);
+    exists = status == 0;
+    if (!exists)
+    {
+      auto status (mdb_get (transaction_a, dividend_blocks, chratos::mdb_val (hash_a), junk));
+      assert (status == 0 || status == MDB_NOTFOUND);
+      exists = status == 0;
+      if (!exists)
+      {
+        auto status (mdb_get (transaction_a, claim_blocks, chratos::mdb_val (hash_a), junk));
+        assert (status == 0 || status == MDB_NOTFOUND);
+        exists = status == 0;
+      }
+    }
+  }
 	return exists;
 }
 
 chratos::block_counts chratos::block_store::block_count (MDB_txn * transaction_a)
 {
 	chratos::block_counts result;
-	MDB_stat send_stats;
-	auto status1 (mdb_stat (transaction_a, send_blocks, &send_stats));
-	assert (status1 == 0);
-	MDB_stat receive_stats;
-	auto status2 (mdb_stat (transaction_a, receive_blocks, &receive_stats));
-	assert (status2 == 0);
-	MDB_stat open_stats;
-	auto status3 (mdb_stat (transaction_a, open_blocks, &open_stats));
-	assert (status3 == 0);
-	MDB_stat change_stats;
-	auto status4 (mdb_stat (transaction_a, change_blocks, &change_stats));
-	assert (status4 == 0);
 	MDB_stat state_v0_stats;
-	auto status5 (mdb_stat (transaction_a, state_blocks_v0, &state_v0_stats));
-	assert (status5 == 0);
+	auto status1 (mdb_stat (transaction_a, state_blocks_v0, &state_v0_stats));
+	assert (status1 == 0);
 	MDB_stat state_v1_stats;
-	auto status6 (mdb_stat (transaction_a, state_blocks_v1, &state_v1_stats));
-	assert (status6 == 0);
+	auto status2 (mdb_stat (transaction_a, state_blocks_v1, &state_v1_stats));
+	assert (status2 == 0);
   MDB_stat dividend_stats;
-  auto status7 (mdb_stat (transaction_a, dividend_blocks, &dividend_stats));
-  assert (status7 == 0);
+  auto status3 (mdb_stat (transaction_a, dividend_blocks, &dividend_stats));
+  assert (status3 == 0);
   MDB_stat claim_stats;
-  auto status8 (mdb_stat (transaction_a, claim_blocks, &claim_stats));
-  assert (status8 == 0);
-	result.send = send_stats.ms_entries;
-	result.receive = receive_stats.ms_entries;
-	result.open = open_stats.ms_entries;
-	result.change = change_stats.ms_entries;
+  auto status4 (mdb_stat (transaction_a, claim_blocks, &claim_stats));
+  assert (status4 == 0);
 	result.state_v0 = state_v0_stats.ms_entries;
 	result.state_v1 = state_v1_stats.ms_entries;
   result.dividend = dividend_stats.ms_entries;

@@ -1150,13 +1150,11 @@ void chratos::rpc_handler::block_count_type ()
 {
 	chratos::transaction transaction (node.store.environment, nullptr, false);
 	chratos::block_counts count (node.store.block_count (transaction));
-	response_l.put ("send", std::to_string (count.send));
-	response_l.put ("receive", std::to_string (count.receive));
-	response_l.put ("open", std::to_string (count.open));
-	response_l.put ("change", std::to_string (count.change));
 	response_l.put ("state_v0", std::to_string (count.state_v0));
 	response_l.put ("state_v1", std::to_string (count.state_v1));
 	response_l.put ("state", std::to_string (count.state_v0 + count.state_v1));
+	response_l.put ("dividend", std::to_string (count.dividend));
+	response_l.put ("claim", std::to_string (count.claim));
 	response_errors ();
 }
 
@@ -1351,93 +1349,12 @@ void chratos::rpc_handler::block_create ()
 					ec = nano::error_rpc::block_create_requirements_state;
 				}
 			}
-			else if (type == "open")
-			{
-				if (representative != 0 && source != 0)
-				{
-					if (work == 0)
-					{
-						work = node.work_generate_blocking (pub);
-					}
-					chratos::open_block open (source, representative, dividend, pub, prv, pub, work);
-					response_l.put ("hash", open.hash ().to_string ());
-					std::string contents;
-					open.serialize_json (contents);
-					response_l.put ("block", contents);
-				}
-				else
-				{
-					ec = nano::error_rpc::block_create_requirements_open;
-				}
-			}
-			else if (type == "receive")
-			{
-				if (source != 0 && previous != 0)
-				{
-					if (work == 0)
-					{
-						work = node.work_generate_blocking (previous);
-					}
-					chratos::receive_block receive (previous, source, dividend, prv, pub, work);
-					response_l.put ("hash", receive.hash ().to_string ());
-					std::string contents;
-					receive.serialize_json (contents);
-					response_l.put ("block", contents);
-				}
-				else
-				{
-					ec = nano::error_rpc::block_create_requirements_receive;
-				}
-			}
-			else if (type == "change")
-			{
-				if (representative != 0 && previous != 0)
-				{
-					if (work == 0)
-					{
-						work = node.work_generate_blocking (previous);
-					}
-					chratos::change_block change (previous, representative, dividend, prv, pub, work);
-					response_l.put ("hash", change.hash ().to_string ());
-					std::string contents;
-					change.serialize_json (contents);
-					response_l.put ("block", contents);
-				}
-				else
-				{
-					ec = nano::error_rpc::block_create_requirements_change;
-				}
-			}
-			else if (type == "send")
-			{
-				if (destination != 0 && previous != 0 && balance != 0 && amount != 0)
-				{
-					if (balance.number () >= amount.number ())
-					{
-						if (work == 0)
-						{
-							work = node.work_generate_blocking (previous);
-						}
-						chratos::send_block send (previous, destination, balance.number () - amount.number (), dividend, prv, pub, work);
-						response_l.put ("hash", send.hash ().to_string ());
-						std::string contents;
-						send.serialize_json (contents);
-						response_l.put ("block", contents);
-					}
-					else
-					{
-						ec = nano::error_common::insufficient_balance;
-					}
-				}
-				else
-				{
-					ec = nano::error_rpc::block_create_requirements_send;
-				}
-			}
-			else
-			{
-				ec = nano::error_blocks::invalid_type;
-			}
+      else if (type == "dividend")
+      {
+      }
+      else if (type == "claim")
+      {
+      }
 		}
 		else
 		{
@@ -1889,67 +1806,6 @@ public:
 	{
 	}
 	virtual ~history_visitor () = default;
-	void send_block (chratos::send_block const & block_a)
-	{
-		tree.put ("type", "send");
-		auto account (block_a.hashables.destination.to_account ());
-		tree.put ("account", account);
-		auto amount (handler.node.ledger.amount (transaction, hash).convert_to<std::string> ());
-		tree.put ("amount", amount);
-		if (raw)
-		{
-			tree.put ("destination", account);
-			tree.put ("balance", block_a.hashables.balance.to_string_dec ());
-			tree.put ("previous", block_a.hashables.previous.to_string ());
-		}
-	}
-	void receive_block (chratos::receive_block const & block_a)
-	{
-		tree.put ("type", "receive");
-		auto account (handler.node.ledger.account (transaction, block_a.hashables.source).to_account ());
-		tree.put ("account", account);
-		auto amount (handler.node.ledger.amount (transaction, hash).convert_to<std::string> ());
-		tree.put ("amount", amount);
-		if (raw)
-		{
-			tree.put ("source", block_a.hashables.source.to_string ());
-			tree.put ("previous", block_a.hashables.previous.to_string ());
-		}
-	}
-	void open_block (chratos::open_block const & block_a)
-	{
-		if (raw)
-		{
-			tree.put ("type", "open");
-			tree.put ("representative", block_a.hashables.representative.to_account ());
-			tree.put ("source", block_a.hashables.source.to_string ());
-			tree.put ("opened", block_a.hashables.account.to_account ());
-		}
-		else
-		{
-			// Report opens as a receive
-			tree.put ("type", "receive");
-		}
-		if (block_a.hashables.source != chratos::genesis_account)
-		{
-			tree.put ("account", handler.node.ledger.account (transaction, block_a.hashables.source).to_account ());
-			tree.put ("amount", handler.node.ledger.amount (transaction, hash).convert_to<std::string> ());
-		}
-		else
-		{
-			tree.put ("account", chratos::genesis_account.to_account ());
-			tree.put ("amount", chratos::genesis_amount.convert_to<std::string> ());
-		}
-	}
-	void change_block (chratos::change_block const & block_a)
-	{
-		if (raw)
-		{
-			tree.put ("type", "change");
-			tree.put ("representative", block_a.hashables.representative.to_account ());
-			tree.put ("previous", block_a.hashables.previous.to_string ());
-		}
-	}
 	void state_block (chratos::state_block const & block_a)
 	{
 		if (raw)

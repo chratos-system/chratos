@@ -152,10 +152,6 @@ class block_counts
 public:
 	block_counts ();
 	size_t sum ();
-	size_t send;
-	size_t receive;
-	size_t open;
-	size_t change;
 	size_t state_v0;
 	size_t state_v1;
   size_t dividend;
@@ -263,6 +259,6 @@ class genesis
 public:
 	explicit genesis ();
 	chratos::block_hash hash () const;
-	std::unique_ptr<chratos::open_block> open;
+	std::unique_ptr<chratos::state_block> open;
 };
 }

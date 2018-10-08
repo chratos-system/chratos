@@ -19,97 +19,7 @@ public:
   {
   }
   virtual ~rollback_visitor () = default;
-  void send_block (chratos::send_block const & block_a) override
-  {
-    /*
-    auto hash (block_a.hash ());
-    chratos::pending_info pending;
-    chratos::pending_key key (block_a.hashables.destination, hash);
-    while (ledger.store.pending_get (transaction, key, pending))
-    {
-      ledger.rollback (transaction, ledger.latest (transaction, block_a.hashables.destination));
-    }
-    chratos::account_info info;
-    auto error (ledger.store.account_get (transaction, pending.source, info));
-    assert (!error);
-    ledger.store.pending_del (transaction, key);
-    ledger.store.representation_add (transaction, ledger.representative (transaction, hash), pending.amount.number ());
-    ledger.change_latest (transaction, pending.source, block_a.hashables.previous, info.rep_block, block_a.hashables.dividend, ledger.balance (transaction, block_a.hashables.previous), info.block_count - 1);
-    ledger.store.block_del (transaction, hash);
-    ledger.store.frontier_del (transaction, hash);
-    ledger.store.frontier_put (transaction, block_a.hashables.previous, pending.source);
-    ledger.store.block_successor_clear (transaction, block_a.hashables.previous);
-    if (!(info.block_count % ledger.store.block_info_max))
-    {
-      ledger.store.block_info_del (transaction, hash);
-    }
-    ledger.stats.inc (chratos::stat::type::rollback, chratos::stat::detail::send);
-    */
-  }
-  void receive_block (chratos::receive_block const & block_a) override
-  {
-    /*
-    auto hash (block_a.hash ());
-    auto representative (ledger.representative (transaction, block_a.hashables.previous));
-    auto amount (ledger.amount (transaction, block_a.hashables.source));
-    auto destination_account (ledger.account (transaction, hash));
-    auto source_account (ledger.account (transaction, block_a.hashables.source));
-    chratos::account_info info;
-    auto error (ledger.store.account_get (transaction, destination_account, info));
-    assert (!error);
-    ledger.store.representation_add (transaction, ledger.representative (transaction, hash), 0 - amount);
-    ledger.change_latest (transaction, destination_account, block_a.hashables.previous, representative, block_a.hashables.dividend, ledger.balance (transaction, block_a.hashables.previous), info.block_count - 1);
-    ledger.store.block_del (transaction, hash);
-    ledger.store.pending_put (transaction, chratos::pending_key (destination_account, block_a.hashables.source), { source_account, amount, block_a.hashables.dividend, chratos::epoch::epoch_0 });
-    ledger.store.frontier_del (transaction, hash);
-    ledger.store.frontier_put (transaction, block_a.hashables.previous, destination_account);
-    ledger.store.block_successor_clear (transaction, block_a.hashables.previous);
-    if (!(info.block_count % ledger.store.block_info_max))
-    {
-      ledger.store.block_info_del (transaction, hash);
-    }
-    ledger.stats.inc (chratos::stat::type::rollback, chratos::stat::detail::receive);
-    */
-  }
-  void open_block (chratos::open_block const & block_a) override
-  {
-    /*
-    auto hash (block_a.hash ());
-    auto amount (ledger.amount (transaction, block_a.hashables.source));
-    auto destination_account (ledger.account (transaction, hash));
-    auto source_account (ledger.account (transaction, block_a.hashables.source));
-    ledger.store.representation_add (transaction, ledger.representative (transaction, hash), 0 - amount);
-    ledger.change_latest (transaction, destination_account, 0, 0, block_a.hashables.dividend, 0, 0);
-    ledger.store.block_del (transaction, hash);
-    ledger.store.pending_put (transaction, chratos::pending_key (destination_account, block_a.hashables.source), { source_account, amount, block_a.hashables.dividend, chratos::epoch::epoch_0 });
-    ledger.store.frontier_del (transaction, hash);
-    ledger.stats.inc (chratos::stat::type::rollback, chratos::stat::detail::open);
-    */
-  }
-  void change_block (chratos::change_block const & block_a) override
-  {
-    /*
-    auto hash (block_a.hash ());
-    auto representative (ledger.representative (transaction, block_a.hashables.previous));
-    auto account (ledger.account (transaction, block_a.hashables.previous));
-    chratos::account_info info;
-    auto error (ledger.store.account_get (transaction, account, info));
-    assert (!error);
-    auto balance (ledger.balance (transaction, block_a.hashables.previous));
-    ledger.store.representation_add (transaction, representative, balance);
-    ledger.store.representation_add (transaction, hash, 0 - balance);
-    ledger.store.block_del (transaction, hash);
-    ledger.change_latest (transaction, account, block_a.hashables.previous, representative, block_a.hashables.dividend, info.balance, info.block_count - 1);
-    ledger.store.frontier_del (transaction, hash);
-    ledger.store.frontier_put (transaction, block_a.hashables.previous, account);
-    ledger.store.block_successor_clear (transaction, block_a.hashables.previous);
-    if (!(info.block_count % ledger.store.block_info_max))
-    {
-      ledger.store.block_info_del (transaction, hash);
-    }
-    ledger.stats.inc (chratos::stat::type::rollback, chratos::stat::detail::change);
-    */
-  }
+
   void state_block (chratos::state_block const & block_a) override
   {
     auto hash (block_a.hash ());
@@ -186,10 +96,6 @@ class ledger_processor : public chratos::block_visitor
 public:
   ledger_processor (chratos::ledger &, MDB_txn *);
   virtual ~ledger_processor () = default;
-  void send_block (chratos::send_block const &) override;
-  void receive_block (chratos::receive_block const &) override;
-  void open_block (chratos::open_block const &) override;
-  void change_block (chratos::change_block const &) override;
   void state_block (chratos::state_block const &) override;
   void dividend_block (chratos::dividend_block const &) override;
   void claim_block (chratos::claim_block const &) override;
@@ -410,22 +316,6 @@ void ledger_processor::epoch_block_impl (chratos::state_block const & block_a)
       }
     }
   }
-}
-
-void ledger_processor::change_block (chratos::change_block const & block_a)
-{
-}
-
-void ledger_processor::send_block (chratos::send_block const & block_a)
-{
-}
-
-void ledger_processor::receive_block (chratos::receive_block const & block_a)
-{
-}
-
-void ledger_processor::open_block (chratos::open_block const & block_a)
-{
 }
 
 void ledger_processor::dividend_block (chratos::dividend_block const & block_a)
@@ -936,13 +826,8 @@ std::unordered_map<chratos::block_hash, int> chratos::ledger::get_dividend_index
 chratos::block_hash chratos::ledger::block_destination (MDB_txn * transaction_a, chratos::block const & block_a)
 {
   chratos::block_hash result (0);
-  chratos::send_block const * send_block (dynamic_cast<chratos::send_block const *> (&block_a));
   chratos::state_block const * state_block (dynamic_cast<chratos::state_block const *> (&block_a));
-  if (send_block != nullptr)
-  {
-    result = send_block->hashables.destination;
-  }
-  else if (state_block != nullptr && is_send (transaction_a, *state_block))
+  if (state_block != nullptr && is_send (transaction_a, *state_block))
   {
     result = state_block->hashables.link;
   }
@@ -1111,23 +996,6 @@ public:
   transaction (transaction_a),
   result (false)
   {
-  }
-  void send_block (chratos::send_block const & block_a) override
-  {
-    result = ledger.store.block_exists (transaction, block_a.previous ());
-  }
-  void receive_block (chratos::receive_block const & block_a) override
-  {
-    result = ledger.store.block_exists (transaction, block_a.previous ());
-    result &= ledger.store.block_exists (transaction, block_a.source ());
-  }
-  void open_block (chratos::open_block const & block_a) override
-  {
-    result = ledger.store.block_exists (transaction, block_a.source ());
-  }
-  void change_block (chratos::change_block const & block_a) override
-  {
-    result = ledger.store.block_exists (transaction, block_a.previous ());
   }
   void state_block (chratos::state_block const & block_a) override
   {

@@ -33,13 +33,9 @@ enum class block_type : uint8_t
 {
 	invalid = 0,
 	not_a_block = 1,
-	send = 2,
-	receive = 3,
-	open = 4,
-	change = 5,
-	state = 6,
-  dividend = 7,
-  claim = 8
+	state = 2,
+  dividend = 3,
+  claim = 4
 };
 class block
 {
@@ -68,182 +64,6 @@ public:
 	virtual void signature_set (chratos::uint512_union const &) = 0;
 	virtual ~block () = default;
 	virtual bool valid_predecessor (chratos::block const &) const = 0;
-};
-class send_hashables
-{
-public:
-	send_hashables (chratos::account const &, chratos::block_hash const &, chratos::amount const &, chratos::block_hash const &);
-	send_hashables (bool &, chratos::stream &);
-	send_hashables (bool &, boost::property_tree::ptree const &);
-	void hash (blake2b_state &) const;
-	chratos::block_hash previous;
-  chratos::block_hash dividend;
-	chratos::account destination;
-	chratos::amount balance;
-};
-class send_block : public chratos::block
-{
-public:
-	send_block (chratos::block_hash const &, chratos::account const &, chratos::amount const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
-	send_block (bool &, chratos::stream &);
-	send_block (bool &, boost::property_tree::ptree const &);
-	virtual ~send_block () = default;
-	using chratos::block::hash;
-	void hash (blake2b_state &) const override;
-	uint64_t block_work () const override;
-	void block_work_set (uint64_t) override;
-	chratos::block_hash previous () const override;
-	chratos::block_hash source () const override;
-	chratos::block_hash root () const override;
-  chratos::block_hash dividend () const override;
-	chratos::account representative () const override;
-	void serialize (chratos::stream &) const override;
-	void serialize_json (std::string &) const override;
-	bool deserialize (chratos::stream &);
-	bool deserialize_json (boost::property_tree::ptree const &);
-	void visit (chratos::block_visitor &) const override;
-	chratos::block_type type () const override;
-	chratos::signature block_signature () const override;
-	void signature_set (chratos::uint512_union const &) override;
-	bool operator== (chratos::block const &) const override;
-	bool operator== (chratos::send_block const &) const;
-	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::amount) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
-	send_hashables hashables;
-	chratos::signature signature;
-	uint64_t work;
-};
-class receive_hashables
-{
-public:
-	receive_hashables (chratos::block_hash const &, chratos::block_hash const &,
- chratos::block_hash const &);
-	receive_hashables (bool &, chratos::stream &);
-	receive_hashables (bool &, boost::property_tree::ptree const &);
-	void hash (blake2b_state &) const;
-	chratos::block_hash previous;
-	chratos::block_hash source;
-  chratos::block_hash dividend;
-};
-class receive_block : public chratos::block
-{
-public:
-	receive_block (chratos::block_hash const &, chratos::block_hash const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
-	receive_block (bool &, chratos::stream &);
-	receive_block (bool &, boost::property_tree::ptree const &);
-	virtual ~receive_block () = default;
-	using chratos::block::hash;
-	void hash (blake2b_state &) const override;
-	uint64_t block_work () const override;
-	void block_work_set (uint64_t) override;
-	chratos::block_hash previous () const override;
-	chratos::block_hash source () const override;
-	chratos::block_hash root () const override;
-  chratos::block_hash dividend () const override;
-	chratos::account representative () const override;
-	void serialize (chratos::stream &) const override;
-	void serialize_json (std::string &) const override;
-	bool deserialize (chratos::stream &);
-	bool deserialize_json (boost::property_tree::ptree const &);
-	void visit (chratos::block_visitor &) const override;
-	chratos::block_type type () const override;
-	chratos::signature block_signature () const override;
-	void signature_set (chratos::uint512_union const &) override;
-	bool operator== (chratos::block const &) const override;
-	bool operator== (chratos::receive_block const &) const;
-	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::block_hash) + sizeof (chratos::block_hash) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
-	receive_hashables hashables;
-	chratos::signature signature;
-	uint64_t work;
-};
-class open_hashables
-{
-public:
-	open_hashables (chratos::block_hash const &, chratos::account const &, chratos::account const &, chratos::block_hash const &);
-	open_hashables (bool &, chratos::stream &);
-	open_hashables (bool &, boost::property_tree::ptree const &);
-	void hash (blake2b_state &) const;
-	chratos::block_hash source;
-	chratos::account representative;
-	chratos::account account;
-  chratos::block_hash dividend;
-};
-class open_block : public chratos::block
-{
-public:
-	open_block (chratos::block_hash const &, chratos::account const &, chratos::account const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
-	open_block (chratos::block_hash const &, chratos::account const &, chratos::account const &, chratos::block_hash const &, std::nullptr_t);
-	open_block (bool &, chratos::stream &);
-	open_block (bool &, boost::property_tree::ptree const &);
-	virtual ~open_block () = default;
-	using chratos::block::hash;
-	void hash (blake2b_state &) const override;
-	uint64_t block_work () const override;
-	void block_work_set (uint64_t) override;
-	chratos::block_hash previous () const override;
-	chratos::block_hash source () const override;
-	chratos::block_hash root () const override;
-  chratos::block_hash dividend () const override;
-	chratos::account representative () const override;
-	void serialize (chratos::stream &) const override;
-	void serialize_json (std::string &) const override;
-	bool deserialize (chratos::stream &);
-	bool deserialize_json (boost::property_tree::ptree const &);
-	void visit (chratos::block_visitor &) const override;
-	chratos::block_type type () const override;
-	chratos::signature block_signature () const override;
-	void signature_set (chratos::uint512_union const &) override;
-	bool operator== (chratos::block const &) const override;
-	bool operator== (chratos::open_block const &) const;
-	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
-	chratos::open_hashables hashables;
-	chratos::signature signature;
-	uint64_t work;
-};
-class change_hashables
-{
-public:
-	change_hashables (chratos::block_hash const &, chratos::account const &, chratos::block_hash const &);
-	change_hashables (bool &, chratos::stream &);
-	change_hashables (bool &, boost::property_tree::ptree const &);
-	void hash (blake2b_state &) const;
-	chratos::block_hash previous;
-	chratos::account representative;
-  chratos::block_hash dividend;
-};
-class change_block : public chratos::block
-{
-public:
-	change_block (chratos::block_hash const &, chratos::account const &, chratos::block_hash const &, chratos::raw_key const &, chratos::public_key const &, uint64_t);
-	change_block (bool &, chratos::stream &);
-	change_block (bool &, boost::property_tree::ptree const &);
-	virtual ~change_block () = default;
-	using chratos::block::hash;
-	void hash (blake2b_state &) const override;
-	uint64_t block_work () const override;
-	void block_work_set (uint64_t) override;
-	chratos::block_hash previous () const override;
-	chratos::block_hash source () const override;
-	chratos::block_hash root () const override;
-  chratos::block_hash dividend () const override;
-	chratos::account representative () const override;
-	void serialize (chratos::stream &) const override;
-	void serialize_json (std::string &) const override;
-	bool deserialize (chratos::stream &);
-	bool deserialize_json (boost::property_tree::ptree const &);
-	void visit (chratos::block_visitor &) const override;
-	chratos::block_type type () const override;
-	chratos::signature block_signature () const override;
-	void signature_set (chratos::uint512_union const &) override;
-	bool operator== (chratos::block const &) const override;
-	bool operator== (chratos::change_block const &) const;
-	bool valid_predecessor (chratos::block const &) const override;
-	static size_t constexpr size = sizeof (chratos::block_hash) + sizeof (chratos::account) + sizeof (chratos::block_hash) + sizeof (chratos::signature) + sizeof (uint64_t);
-	chratos::change_hashables hashables;
-	chratos::signature signature;
-	uint64_t work;
 };
 class state_hashables
 {
@@ -394,10 +214,6 @@ public:
 class block_visitor
 {
 public:
-	virtual void send_block (chratos::send_block const &) = 0;
-	virtual void receive_block (chratos::receive_block const &) = 0;
-	virtual void open_block (chratos::open_block const &) = 0;
-	virtual void change_block (chratos::change_block const &) = 0;
 	virtual void state_block (chratos::state_block const &) = 0;
   virtual void dividend_block (chratos::dividend_block const &) = 0;
   virtual void claim_block (chratos::claim_block const &) = 0;

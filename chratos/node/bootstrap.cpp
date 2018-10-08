@@ -466,34 +466,6 @@ void chratos::bulk_pull_client::received_type ()
 	chratos::block_type type (static_cast<chratos::block_type> (connection->receive_buffer->data ()[0]));
 	switch (type)
 	{
-		case chratos::block_type::send:
-		{
-			connection->socket->async_read (connection->receive_buffer, chratos::send_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case chratos::block_type::receive:
-		{
-			connection->socket->async_read (connection->receive_buffer, chratos::receive_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case chratos::block_type::open:
-		{
-			connection->socket->async_read (connection->receive_buffer, chratos::open_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case chratos::block_type::change:
-		{
-			connection->socket->async_read (connection->receive_buffer, chratos::change_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
 		case chratos::block_type::state:
 		{
 			connection->socket->async_read (connection->receive_buffer, chratos::state_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
@@ -2319,38 +2291,6 @@ void chratos::bulk_push_server::received_type ()
 	chratos::block_type type (static_cast<chratos::block_type> (receive_buffer->data ()[0]));
 	switch (type)
 	{
-		case chratos::block_type::send:
-		{
-			connection->node->stats.inc (chratos::stat::type::bootstrap, chratos::stat::detail::send, chratos::stat::dir::in);
-			connection->socket->async_read (receive_buffer, chratos::send_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case chratos::block_type::receive:
-		{
-			connection->node->stats.inc (chratos::stat::type::bootstrap, chratos::stat::detail::receive, chratos::stat::dir::in);
-			connection->socket->async_read (receive_buffer, chratos::receive_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case chratos::block_type::open:
-		{
-			connection->node->stats.inc (chratos::stat::type::bootstrap, chratos::stat::detail::open, chratos::stat::dir::in);
-			connection->socket->async_read (receive_buffer, chratos::open_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
-		case chratos::block_type::change:
-		{
-			connection->node->stats.inc (chratos::stat::type::bootstrap, chratos::stat::detail::change, chratos::stat::dir::in);
-			connection->socket->async_read (receive_buffer, chratos::change_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
-				this_l->received_block (ec, size_a, type);
-			});
-			break;
-		}
 		case chratos::block_type::state:
 		{
 			connection->node->stats.inc (chratos::stat::type::bootstrap, chratos::stat::detail::state_block, chratos::stat::dir::in);
