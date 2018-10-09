@@ -1509,44 +1509,24 @@ void chratos::rpc_handler::claimed_dividends ()
 
 void chratos::rpc_handler::claim_dividends ()
 {
-  chratos::transaction transaction (node.store.environment, nullptr, false);
-  auto dividend_order (node.ledger.get_dividend_indexes (transaction));
-  const size_t size = dividend_order.size ();
-  std::vector<chratos::block_hash> ordered (size);
-  ordered.reserve (size);
 
   boost::property_tree::ptree claims;
-
-  std::fill(ordered.begin(), ordered.end(), 0);
-
-  for (auto & it : dividend_order)
-  {
-    ordered[it.second] = it.first;
-  }
 
   for (auto i (node.wallets.items.begin ()), n (node.wallets.items.end ()); i != n; ++i)
   {
     auto wallet (i->second);
-    chratos::account representative (wallet->store.representative (transaction));
-    for (auto & hash : ordered)
+    auto claimed = wallet->claim_dividends ();
+
+    for (auto & claim : claimed)
     {
-      auto accounts = wallet->search_unclaimed (hash);
-      std::shared_ptr<chratos::block> dividend_l (node.store.block_get(transaction, hash));
-      for (auto & account : accounts)
-      {
-        // Check pending and claim outstanding
-        wallet->receive_outstanding_pendings_sync (transaction, account, hash);
-        // Check dividend points to the account's last claimed
-        chratos::account_info info;
-        node.store.account_get (transaction, account, info);
-        boost::property_tree::ptree entry;
-        // Claim dividends
-        auto claim_hash = wallet->claim_dividend_sync (dividend_l, account, representative);
-        entry.put ("account", account.to_account ());
-        entry.put ("dividend", hash.to_string ());
-        entry.put ("claim", claim_hash.to_string ());
-        claims.push_back(std::make_pair ("", entry));
-      }
+      boost::property_tree::ptree entry;
+      auto account (claim.account);
+      auto hash (claim.dividend);
+      auto claim_hash (claim.claim);
+      entry.put ("account", account.to_account ());
+      entry.put ("dividend", hash.to_string ());
+      entry.put ("claim", claim_hash.to_string ());
+      claims.push_back(std::make_pair ("", entry));
     }
   }
   response_l.add_child ("claims", claims);

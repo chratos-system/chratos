@@ -1654,6 +1654,7 @@ layout (new QVBoxLayout),
 show_ledger (new QPushButton ("Ledger")),
 show_peers (new QPushButton ("Peers")),
 search_for_receivables (new QPushButton ("Search for receivables")),
+claim_dividends (new QPushButton ("Claim dividends")),
 bootstrap (new QPushButton ("Initiate bootstrap")),
 wallet_refresh (new QPushButton ("Refresh Wallet")),
 create_block (new QPushButton ("Create Block")),
@@ -1736,6 +1737,7 @@ wallet (wallet_a)
 	layout->addWidget (show_ledger);
 	layout->addWidget (show_peers);
 	layout->addWidget (search_for_receivables);
+  layout->addWidget (claim_dividends);
 	layout->addWidget (bootstrap);
 	layout->addWidget (wallet_refresh);
 	layout->addWidget (create_block);
@@ -1810,6 +1812,9 @@ wallet (wallet_a)
 	QObject::connect (search_for_receivables, &QPushButton::released, [this]() {
 		this->wallet.wallet_m->search_pending ();
 	});
+  QObject::connect (claim_dividends, &QPushButton::released, [this]() {
+    this->wallet.wallet_m->claim_dividends ();
+  });
 	QObject::connect (bootstrap, &QPushButton::released, [this]() {
 		this->wallet.node.bootstrap_initiator.bootstrap ();
 	});

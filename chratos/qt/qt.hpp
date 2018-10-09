@@ -55,6 +55,7 @@ public:
 	QPushButton * show_ledger;
 	QPushButton * show_peers;
 	QPushButton * search_for_receivables;
+  QPushButton * claim_dividends;
 	QPushButton * bootstrap;
 	QPushButton * wallet_refresh;
 	QPushButton * create_block;

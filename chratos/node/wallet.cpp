@@ -747,6 +747,13 @@ void chratos::kdf::phs (chratos::raw_key & result_a, std::string const & passwor
   (void)success;
 }
 
+chratos::dividend_claim_result::dividend_claim_result (chratos::account const & account_a, chratos::block_hash const & dividend_a, chratos::block_hash const & claim_a) :
+account (account_a),
+dividend (dividend_a),
+claim (claim_a)
+{
+}
+
 chratos::wallet::wallet (bool & init_a, chratos::transaction & transaction_a, chratos::node & node_a, std::string const & wallet_a) :
 lock_observer ([](bool, bool) {}),
 store (init_a, node_a.wallets.kdf, transaction_a, node_a.config.random_representative (), node_a.config.password_fanout, wallet_a),
@@ -1385,6 +1392,45 @@ bool chratos::wallet::search_pending ()
   {
     BOOST_LOG (node.log) << "Stopping search, wallet is locked";
   }
+  return result;
+}
+
+std::vector<chratos::dividend_claim_result> chratos::wallet::claim_dividends ()
+{
+  std::vector<chratos::dividend_claim_result> result;
+  chratos::transaction transaction (store.environment, nullptr, false);
+  auto dividend_order (node.ledger.get_dividend_indexes (transaction));
+  const size_t size = dividend_order.size ();
+  std::vector<chratos::block_hash> ordered (size);
+  ordered.reserve (size);
+  
+  std::fill(ordered.begin(), ordered.end(), 0);
+
+  for (auto & it : dividend_order)
+  {
+    ordered[it.second] = it.first;
+  }
+
+  chratos::account representative (store.representative (transaction));
+
+  for (auto & hash : ordered)
+  {
+    auto accounts = search_unclaimed (hash);
+    std::shared_ptr<chratos::block> dividend_l (node.store.block_get(transaction, hash));
+    for (auto & account : accounts)
+    {
+      // Check pending and claim outstanding
+      receive_outstanding_pendings_sync (transaction, account, hash);
+      // Check dividend points to the account's last claimed
+      chratos::account_info info;
+      node.store.account_get (transaction, account, info);
+      // Claim dividends
+      auto claim_hash = claim_dividend_sync (dividend_l, account, representative);
+
+      result.push_back (chratos::dividend_claim_result (account, hash, claim_hash));
+    }
+  }
+
   return result;
 }
 

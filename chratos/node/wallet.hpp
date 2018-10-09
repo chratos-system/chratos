@@ -42,6 +42,15 @@ public:
 	void phs (chratos::raw_key &, std::string const &, chratos::uint256_union const &);
 	std::mutex mutex;
 };
+class dividend_claim_result
+{
+public:
+  dividend_claim_result () = default;
+  dividend_claim_result (chratos::account const &, chratos::block_hash const &, chratos::block_hash const &);
+  chratos::account account;
+  chratos::block_hash dividend;
+  chratos::block_hash claim;
+};
 enum class key_type
 {
 	not_a_type,
@@ -160,6 +169,7 @@ public:
 	void work_update (MDB_txn *, chratos::account const &, chratos::block_hash const &, uint64_t);
 	void work_ensure (chratos::account const &, chratos::block_hash const &);
 	bool search_pending ();
+  std::vector<chratos::dividend_claim_result> claim_dividends ();
   std::vector<chratos::block_hash> unclaimed_for_account (chratos::account const &);
   std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
   chratos::amount amount_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
