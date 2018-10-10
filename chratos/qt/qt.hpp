@@ -188,6 +188,22 @@ public:
 	QPushButton * back;
 	chratos_qt::wallet & wallet;
 };
+class dividends
+{
+public:
+  dividends (chratos_qt::wallet &);
+	void refresh ();
+	void refresh_dividends_paid ();
+	QLabel * dividends_paid_label;
+	QWidget * window;
+	QVBoxLayout * layout;
+	QStandardItemModel * model;
+	QTableView * view;
+  QPushButton * view_claims;
+	QFrame * separator;
+	QPushButton * back;
+	chratos_qt::wallet & wallet;
+};
 class import
 {
 public:
@@ -313,6 +329,7 @@ public:
 	chratos_qt::eventloop_processor & processor;
 	chratos_qt::history history;
 	chratos_qt::accounts accounts;
+  chratos_qt::dividends dividends;
 	chratos_qt::self_pane self;
 	chratos_qt::settings settings;
 	chratos_qt::advanced_actions advanced;
@@ -337,6 +354,7 @@ public:
 	QPushButton * send_blocks;
 	QPushButton * settings_button;
 	QPushButton * accounts_button;
+  QPushButton * dividends_button;
 	QPushButton * show_advanced;
 
 	QWidget * send_blocks_window;

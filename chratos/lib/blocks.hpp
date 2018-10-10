@@ -55,6 +55,7 @@ public:
   // Previous dividend for blocks or zero if there isn't one
   virtual chratos::block_hash dividend () const = 0;
 	virtual chratos::account representative () const = 0;
+  virtual chratos::account account () const = 0;
 	virtual void serialize (chratos::stream &) const = 0;
 	virtual void serialize_json (std::string &) const = 0;
 	virtual void visit (chratos::block_visitor &) const = 0;
@@ -104,6 +105,7 @@ public:
 	chratos::block_hash root () const override;
   chratos::block_hash dividend () const override;
 	chratos::account representative () const override;
+  chratos::account account () const override;
 	void serialize (chratos::stream &) const override;
 	void serialize_json (std::string &) const override;
 	bool deserialize (chratos::stream &);
@@ -149,6 +151,7 @@ public:
 	chratos::block_hash root () const override;
   chratos::block_hash dividend () const override;
 	chratos::account representative () const override;
+  chratos::account account () const override;
 	void serialize (chratos::stream &) const override;
 	void serialize_json (std::string &) const override;
 	bool deserialize (chratos::stream &);
@@ -194,6 +197,7 @@ public:
 	chratos::block_hash root () const override;
   chratos::block_hash dividend () const override;
 	chratos::account representative () const override;
+  chratos::account account () const override;
 	void serialize (chratos::stream &) const override;
 	void serialize_json (std::string &) const override;
 	bool deserialize (chratos::stream &);

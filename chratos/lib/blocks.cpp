@@ -384,6 +384,11 @@ chratos::account chratos::state_block::representative () const
   return hashables.representative;
 }
 
+chratos::account chratos::state_block::account () const
+{
+  return hashables.account;
+}
+
 chratos::signature chratos::state_block::block_signature () const
 {
   return signature;
@@ -776,6 +781,11 @@ chratos::account chratos::dividend_block::representative () const
   return hashables.representative;
 }
 
+chratos::account chratos::dividend_block::account () const
+{
+  return hashables.account;
+}
+
 chratos::signature chratos::dividend_block::block_signature () const
 {
   return signature;
@@ -1078,6 +1088,11 @@ chratos::block_hash chratos::claim_block::dividend () const
 chratos::account chratos::claim_block::representative () const
 {
   return hashables.representative;
+}
+
+chratos::account chratos::claim_block::account () const
+{
+  return hashables.account;
 }
 
 chratos::signature chratos::claim_block::block_signature () const

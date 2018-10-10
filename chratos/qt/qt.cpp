@@ -311,6 +311,96 @@ void chratos_qt::accounts::refresh ()
 	}
 }
 
+chratos_qt::dividends::dividends (chratos_qt::wallet & wallet_a) :
+window (new QWidget),
+dividends_paid_label (new QLabel),
+layout (new QVBoxLayout),
+model (new QStandardItemModel),
+view (new QTableView),
+view_claims (new QPushButton ("View Claims")),
+separator (new QFrame),
+back (new QPushButton ("Back")),
+wallet (wallet_a)
+{
+	separator->setFrameShape (QFrame::HLine);
+	separator->setFrameShadow (QFrame::Sunken);
+	model->setHorizontalHeaderItem (0, new QStandardItem ("Amount"));
+	model->setHorizontalHeaderItem (1, new QStandardItem ("Hash"));
+	model->setHorizontalHeaderItem (2, new QStandardItem ("From"));
+	view->setEditTriggers (QAbstractItemView::NoEditTriggers);
+	view->setModel (model);
+	view->verticalHeader ()->hide ();
+	view->setContextMenuPolicy (Qt::ContextMenuPolicy::CustomContextMenu);
+	view->horizontalHeader ()->setStretchLastSection (true);
+	layout->addWidget (dividends_paid_label);
+	layout->addWidget (view);
+  layout->addWidget (view_claims);
+	layout->addWidget (separator);
+	layout->addWidget (back);
+	window->setLayout (layout);
+
+	QObject::connect (back, &QPushButton::clicked, [this]() {
+		this->wallet.pop_main_stack ();
+	});
+
+	refresh_dividends_paid ();
+  refresh ();
+}
+
+void chratos_qt::dividends::refresh_dividends_paid ()
+{
+	chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, false);
+
+	chratos::uint128_t paid (0);
+
+  auto dividend_info (this->wallet.node.store.dividend_get (transaction));
+
+  auto block (this->wallet.node.store.block_get (transaction, dividend_info.head));
+
+  while (block != nullptr)
+  {
+    paid = paid + (this->wallet.node.ledger.amount (transaction, block->hash ()));
+    block = (this->wallet.node.store.block_get (transaction, block->dividend ()));
+  }
+
+  auto final_text (std::string ("Paid: ") + wallet.format_balance (paid));
+
+  dividends_paid_label->setText (QString (final_text.c_str ()));
+	this->wallet.node.alarm.add (std::chrono::steady_clock::now () + std::chrono::seconds (60), [this]() {
+		this->wallet.application.postEvent (&this->wallet.processor, new eventloop_event ([this]() {
+			refresh_dividends_paid ();
+      refresh ();
+		}));
+  });
+}
+
+void chratos_qt::dividends::refresh ()
+{
+	model->removeRows (0, model->rowCount ());
+	chratos::transaction transaction (wallet.wallet_m->store.environment, nullptr, false);
+
+  auto dividend_info (this->wallet.node.store.dividend_get (transaction));
+
+  auto block (this->wallet.node.store.block_get (transaction, dividend_info.head));
+
+  while (block != nullptr)
+  {
+    QList<QStandardItem *> items;
+  
+    auto hash (block->hash ());
+ 
+    auto dividend_amount (this->wallet.node.ledger.amount (transaction, hash));
+    std::string balance = wallet.format_balance (dividend_amount);
+    items.push_back (new QStandardItem (balance.c_str ()));
+    items.push_back (new QStandardItem (QString (hash.to_string ().c_str ())));
+    items.push_back (new QStandardItem (QString (block->account ().to_account ().c_str ())));
+
+    model->appendRow (items);
+
+    block = (this->wallet.node.store.block_get (transaction, block->dividend ()));
+  }
+}
+
 chratos_qt::import::import (chratos_qt::wallet & wallet_a) :
 window (new QWidget),
 layout (new QVBoxLayout),
@@ -940,6 +1030,7 @@ account (account_a),
 processor (processor_a),
 history (node.ledger, account, *this),
 accounts (*this),
+dividends (*this),
 self (*this, account_a),
 settings (*this),
 advanced (*this),
@@ -961,6 +1052,7 @@ account_history_label (new QLabel ("Account history:")),
 send_blocks (new QPushButton ("Send")),
 settings_button (new QPushButton ("Settings")),
 accounts_button (new QPushButton ("Accounts")),
+dividends_button (new QPushButton ("Dividends")),
 show_advanced (new QPushButton ("Advanced")),
 send_blocks_window (new QWidget),
 send_blocks_layout (new QVBoxLayout),
@@ -992,6 +1084,7 @@ active_status (*this)
 	entry_window_layout->addWidget (send_blocks);
 	entry_window_layout->addWidget (settings_button);
 	entry_window_layout->addWidget (accounts_button);
+  entry_window_layout->addWidget (dividends_button);
 	entry_window_layout->addWidget (show_advanced);
 	entry_window_layout->setContentsMargins (0, 0, 0, 0);
 	entry_window_layout->setSpacing (5);
@@ -1042,6 +1135,12 @@ void chratos_qt::wallet::start ()
 			this_l->push_main_stack (this_l->accounts.window);
 		}
 	});
+  QObject::connect (dividends_button, &QPushButton::released, [this_w]() {
+    if (auto this_l = this_w.lock ())
+    {
+      this_l->push_main_stack (this_l->dividends.window);
+    }
+  });
 	QObject::connect (show_advanced, &QPushButton::released, [this_w]() {
 		if (auto this_l = this_w.lock ())
 		{
