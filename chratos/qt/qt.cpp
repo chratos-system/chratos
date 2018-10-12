@@ -318,6 +318,8 @@ layout (new QVBoxLayout),
 model (new QStandardItemModel),
 view (new QTableView),
 view_claims (new QPushButton ("View Claims")),
+claim_all_dividends (new QPushButton ("Claim All Unclaimed")),
+claim_dividend (new QPushButton ("Claim Dividend")),
 separator (new QFrame),
 back (new QPushButton ("Back")),
 wallet (wallet_a)
@@ -326,7 +328,8 @@ wallet (wallet_a)
 	separator->setFrameShadow (QFrame::Sunken);
 	model->setHorizontalHeaderItem (0, new QStandardItem ("Amount"));
 	model->setHorizontalHeaderItem (1, new QStandardItem ("Hash"));
-	model->setHorizontalHeaderItem (2, new QStandardItem ("From"));
+	model->setHorizontalHeaderItem (2, new QStandardItem ("Claimed"));
+	model->setHorizontalHeaderItem (3, new QStandardItem ("From"));
 	view->setEditTriggers (QAbstractItemView::NoEditTriggers);
 	view->setModel (model);
 	view->verticalHeader ()->hide ();
@@ -335,9 +338,50 @@ wallet (wallet_a)
 	layout->addWidget (dividends_paid_label);
 	layout->addWidget (view);
   layout->addWidget (view_claims);
-	layout->addWidget (separator);
+  layout->addWidget (claim_all_dividends);
+  layout->addWidget (claim_dividend);
 	layout->addWidget (back);
 	window->setLayout (layout);
+
+	QObject::connect (view_claims, &QPushButton::released, [this]() {
+      this->wallet.push_main_stack (this->wallet.claims_viewer.window);
+	});
+
+  QObject::connect (claim_all_dividends, &QPushButton::released, [this]() {
+    this->wallet.wallet_m->claim_dividends ();
+  });
+
+  QObject::connect (claim_dividend, &QPushButton::released, [this]() {
+      chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, false);
+
+		auto selection (view->selectionModel ()->selection ().indexes ());
+
+		if (selection.size () == 1)
+		{
+      chratos::block_hash hash (0);
+      chratos::account account (this->wallet.account);
+      chratos::account_info info;
+
+      auto error (this->wallet.node.store.account_get (transaction, account, info));
+      assert (!error);
+
+      std::string hash_text (model->item (selection[0].row (), 1)->text ().toStdString ());
+      error = hash.decode_hex (hash_text);
+      assert (!error);
+
+      chratos::account representative (this->wallet.wallet_m->store.representative (transaction));
+      std::shared_ptr<chratos::block> dividend_l (this->wallet.node.store.block_get (transaction, hash));
+      // Check pending and claim outstanding
+      this->wallet.wallet_m->receive_outstanding_pendings_async (transaction, account, hash, [this, &dividend_l, &info, &account, &representative]() {
+        // Check dividend points to the account's last claimed
+        if (info.dividend_block == dividend_l->dividend ())
+        {
+          this->wallet.wallet_m->claim_dividend_async (dividend_l, account, representative, [](std::shared_ptr<chratos::block> block) {
+          });
+        }
+      });
+    }
+  });
 
 	QObject::connect (back, &QPushButton::clicked, [this]() {
 		this->wallet.pop_main_stack ();
@@ -383,22 +427,110 @@ void chratos_qt::dividends::refresh ()
 
   auto block (this->wallet.node.store.block_get (transaction, dividend_info.head));
 
+  chratos::account_info info;
+
+  auto error (this->wallet.node.store.account_get (transaction, this->wallet.account, info));
+
+  assert (!error);
+
   while (block != nullptr)
   {
     QList<QStandardItem *> items;
   
     auto hash (block->hash ());
- 
+
     auto dividend_amount (this->wallet.node.ledger.amount (transaction, hash));
+    chratos::amount claimed_amount (this->wallet.node.ledger.amount_for_dividend (transaction, hash, this->wallet.account));
     std::string balance = wallet.format_balance (dividend_amount);
     items.push_back (new QStandardItem (balance.c_str ()));
-    items.push_back (new QStandardItem (QString (hash.to_string ().c_str ())));
-    items.push_back (new QStandardItem (QString (block->account ().to_account ().c_str ())));
+    items.push_back (new QStandardItem (hash.to_string ().c_str ()));
+
+    std::string claimed_balance = wallet.format_balance (claimed_amount.number ());
+
+    if (this->wallet.node.ledger.dividends_are_ordered (transaction, hash, info.dividend_block))
+    {
+      items.push_back (new QStandardItem (claimed_balance.c_str ()));
+    }
+    else
+    {
+      std::string claimed_str = claimed_balance + " (Unclaimed)";
+      items.push_back (new QStandardItem (claimed_str.c_str ()));
+    }
+
+    items.push_back (new QStandardItem (block->account ().to_account ().c_str ()));
 
     model->appendRow (items);
 
     block = (this->wallet.node.store.block_get (transaction, block->dividend ()));
   }
+}
+
+chratos_qt::claims_viewer::claims_viewer (chratos_qt::wallet & wallet_a) :
+window (new QWidget),
+layout (new QVBoxLayout),
+total_claimed_label (new QLabel),
+model (new QStandardItemModel),
+view (new QTableView),
+back (new QPushButton ("Back")),
+wallet (wallet_a)
+{
+	model->setHorizontalHeaderItem (0, new QStandardItem ("Amount"));
+	model->setHorizontalHeaderItem (2, new QStandardItem ("Dividend"));
+	model->setHorizontalHeaderItem (1, new QStandardItem ("Hash"));
+	view->setEditTriggers (QAbstractItemView::NoEditTriggers);
+	view->setModel (model);
+	view->verticalHeader ()->hide ();
+	view->setContextMenuPolicy (Qt::ContextMenuPolicy::CustomContextMenu);
+	view->horizontalHeader ()->setStretchLastSection (true);
+	layout->addWidget (total_claimed_label);
+	layout->addWidget (view);
+	layout->addWidget (back);
+	window->setLayout (layout);
+
+	QObject::connect (back, &QPushButton::clicked, [this]() {
+		this->wallet.pop_main_stack ();
+	});
+
+  refresh ();
+}
+
+void chratos_qt::claims_viewer::refresh ()
+{
+	model->removeRows (0, model->rowCount ());
+	chratos::transaction transaction (wallet.wallet_m->store.environment, nullptr, false);
+
+  chratos::account_info info;
+
+  auto error (this->wallet.node.store.account_get (transaction, this->wallet.account, info));
+  assert (!error);
+
+  auto block = this->wallet.node.store.block_get (transaction, info.head);
+
+  while (block != nullptr)
+  {
+    QList<QStandardItem *> items;
+  
+    if (block->type () == chratos::block_type::claim)
+    { 
+      auto hash (block->hash ());
+      auto dividend (block->dividend ());
+      auto claimed_amount (this->wallet.node.ledger.amount (transaction, hash));
+      std::string balance = wallet.format_balance (claimed_amount);
+      items.push_back (new QStandardItem (balance.c_str ()));
+      items.push_back (new QStandardItem (dividend.to_string ().c_str ()));
+      items.push_back (new QStandardItem (hash.to_string ().c_str ()));
+      model->appendRow (items);
+    }
+
+    block = (this->wallet.node.store.block_get (transaction, block->previous ()));
+  }
+
+	this->wallet.node.alarm.add (std::chrono::steady_clock::now () + std::chrono::seconds (60), [this]() {
+		this->wallet.application.postEvent (&this->wallet.processor, new eventloop_event ([this]() {
+			refresh ();
+		}));
+	});
+
 }
 
 chratos_qt::import::import (chratos_qt::wallet & wallet_a) :
@@ -572,7 +704,8 @@ wallet (wallet_a)
 	model->setHorizontalHeaderItem (0, new QStandardItem ("Type"));
 	model->setHorizontalHeaderItem (1, new QStandardItem ("Account"));
 	model->setHorizontalHeaderItem (2, new QStandardItem ("Amount"));
-	model->setHorizontalHeaderItem (3, new QStandardItem ("Hash"));
+	model->setHorizontalHeaderItem (3, new QStandardItem ("Dividend"));
+	model->setHorizontalHeaderItem (4, new QStandardItem ("Hash"));
 	view->setModel (model);
 	view->setEditTriggers (QAbstractItemView::NoEditTriggers);
 	view->verticalHeader ()->hide ();
@@ -662,9 +795,10 @@ void chratos_qt::history::refresh ()
 		block->visit (visitor);
 		items.push_back (new QStandardItem (QString (visitor.type.c_str ())));
 		items.push_back (new QStandardItem (QString (visitor.account.to_account ().c_str ())));
-		auto balanceItem = new QStandardItem (QString (wallet.format_balance (visitor.amount).c_str ()));
+		auto balanceItem = new QStandardItem (wallet.format_balance (visitor.amount).c_str ());
 		balanceItem->setData (Qt::AlignRight, Qt::TextAlignmentRole);
 		items.push_back (balanceItem);
+    items.push_back (new QStandardItem (QString (block->dividend ().to_string ().c_str ())));
 		items.push_back (new QStandardItem (QString (hash.to_string ().c_str ())));
 		hash = block->previous ();
 		model->appendRow (items);
@@ -1031,6 +1165,7 @@ processor (processor_a),
 history (node.ledger, account, *this),
 accounts (*this),
 dividends (*this),
+claims_viewer (*this),
 self (*this, account_a),
 settings (*this),
 advanced (*this),

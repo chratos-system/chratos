@@ -697,19 +697,28 @@ chratos::amount chratos::ledger::amount_for_dividend (MDB_txn * transaction_a, c
   {
     if (!store.account_get (transaction_a, account_a, account_info))
     {
-      chratos::amount genesis_supply (std::numeric_limits<chratos::uint128_t>::max ());
-      chratos::amount burned_amount (burn_account_balance (transaction_a, dividend_a));
-      chratos::amount balance_at_dividend (account_info.balance);
-      chratos::amount dividend_amount (amount (transaction_a, block_l->hash ()));
-      chratos::amount total_supply (genesis_supply.number () - burned_amount.number ());
-      boost::multiprecision::cpp_bin_float_100 balance_f (balance_at_dividend.number ());
-      boost::multiprecision::cpp_bin_float_100 daf (dividend_amount.number ());
-      boost::multiprecision::cpp_bin_float_100 tsf (total_supply.number ());
-      boost::multiprecision::cpp_bin_float_100 total_f (tsf - daf);
-      boost::multiprecision::cpp_bin_float_100 proportion (balance_f / total_f);
-      boost::multiprecision::cpp_bin_float_100 reward (proportion * daf);
-      
-      result = chratos::amount (static_cast<uint128_t> (reward));
+      auto front (store.block_get (transaction_a, account_info.head));
+
+      while (front && (front->dividend () == dividend_a || dividends_are_ordered (transaction_a, dividend_a, front->dividend ())))
+      {
+        front = store.block_get (transaction_a, front->previous ());
+      }
+
+      if (front) {
+        chratos::amount genesis_supply (std::numeric_limits<chratos::uint128_t>::max ());
+        chratos::amount burned_amount (burn_account_balance (transaction_a, dividend_a));
+        chratos::amount balance_at_dividend (balance (transaction_a, front->hash ()));
+        chratos::amount dividend_amount (amount (transaction_a, block_l->hash ()));
+        chratos::amount total_supply (genesis_supply.number () - burned_amount.number ());
+        boost::multiprecision::cpp_bin_float_100 balance_f (balance_at_dividend.number ());
+        boost::multiprecision::cpp_bin_float_100 daf (dividend_amount.number ());
+        boost::multiprecision::cpp_bin_float_100 tsf (total_supply.number ());
+        boost::multiprecision::cpp_bin_float_100 total_f (tsf - daf);
+        boost::multiprecision::cpp_bin_float_100 proportion (balance_f / total_f);
+        boost::multiprecision::cpp_bin_float_100 reward (proportion * daf);
+
+        result = chratos::amount (static_cast<uint128_t> (reward));
+      }
     }
   }
 

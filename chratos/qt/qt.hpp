@@ -200,7 +200,22 @@ public:
 	QStandardItemModel * model;
 	QTableView * view;
   QPushButton * view_claims;
+  QPushButton * claim_all_dividends;
+  QPushButton * claim_dividend;
 	QFrame * separator;
+	QPushButton * back;
+	chratos_qt::wallet & wallet;
+};
+class claims_viewer
+{
+public:
+  claims_viewer (chratos_qt::wallet &);
+	void refresh ();
+	QLabel * total_claimed_label;
+	QWidget * window;
+	QVBoxLayout * layout;
+	QStandardItemModel * model;
+	QTableView * view;
 	QPushButton * back;
 	chratos_qt::wallet & wallet;
 };
@@ -330,6 +345,7 @@ public:
 	chratos_qt::history history;
 	chratos_qt::accounts accounts;
   chratos_qt::dividends dividends;
+  chratos_qt::claims_viewer claims_viewer;
 	chratos_qt::self_pane self;
 	chratos_qt::settings settings;
 	chratos_qt::advanced_actions advanced;

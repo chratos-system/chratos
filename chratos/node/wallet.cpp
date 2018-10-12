@@ -1515,6 +1515,7 @@ void chratos::wallet::receive_outstanding_pendings_sync (MDB_txn * transaction_a
   const auto last_dividend_hash = div_block->dividend ();
 
   chratos::account representative;
+
   representative = store.representative (transaction_a);
 
   for (auto j (node.store.pending_begin (transaction_a, chratos::pending_key (account_a, 0))), m (node.store.pending_begin (transaction_a, chratos::pending_key (account_a.number () + 1, 0))); j != m; ++j)
@@ -1529,7 +1530,38 @@ void chratos::wallet::receive_outstanding_pendings_sync (MDB_txn * transaction_a
       receive_sync (block, representative, amount, true);
     }
   }
+}
 
+void chratos::wallet::receive_outstanding_pendings_async (MDB_txn * transaction_a, chratos::account const & account_a, chratos::block_hash const & dividend_a, std::function<void()> const & action_a, bool generate_work_a)
+{
+  const auto div_block = node.ledger.store.block_get (transaction_a, dividend_a);
+  const auto last_dividend_hash = div_block->dividend ();
+
+  chratos::account representative;
+  representative = store.representative (transaction_a);
+
+  auto pending (node.store.pending_begin (transaction_a, chratos::pending_key (account_a, 0)));
+
+  auto end (node.store.pending_begin (transaction_a, chratos::pending_key (account_a.number () + 1, 0)));
+
+  std::function<void(chratos::store_iterator<chratos::pending_key, chratos::pending_info> &)> check_and_claim;
+
+  check_and_claim = [this, &transaction_a, &end, last_dividend_hash, &check_and_claim, action_a, representative] (chratos::store_iterator<chratos::pending_key, chratos::pending_info> & current) {
+    if (current == end) {
+      return action_a ();
+    }
+    chratos::pending_key key (current->first);
+    chratos::pending_info pending (current->second);
+    if (pending.dividend == last_dividend_hash)
+    {
+      auto hash (key.hash);
+      auto amount (pending.amount.number ());
+      std::shared_ptr<chratos::block> block = node.store.block_get (transaction_a, hash);
+      receive_async (block, representative, amount, [&check_and_claim, &current](std::shared_ptr<chratos::block> b) {
+        check_and_claim (++current);
+      }, true);
+    }
+  };
 }
 
 void chratos::wallet::init_free_accounts (MDB_txn * transaction_a)
