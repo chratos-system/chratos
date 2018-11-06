@@ -71,8 +71,8 @@ TEST (network, send_node_id_handshake)
 	auto node1 (std::make_shared<chratos::node> (init1, system.service, 24001, chratos::unique_path (), system.alarm, system.logging, system.work));
 	node1->start ();
 	system.nodes.push_back (node1);
-	auto initial (system.nodes[0]->stats.count (rai::stat::type::message, rai::stat::detail::node_id_handshake, rai::stat::dir::in));
-	auto initial_node1 (node1->stats.count (rai::stat::type::message, rai::stat::detail::node_id_handshake, rai::stat::dir::in));
+	auto initial (system.nodes[0]->stats.count (chratos::stat::type::message, chratos::stat::detail::node_id_handshake, chratos::stat::dir::in));
+	auto initial_node1 (node1->stats.count (chratos::stat::type::message, chratos::stat::detail::node_id_handshake, chratos::stat::dir::in));
 	system.nodes[0]->network.send_keepalive (node1->network.endpoint ());
 	ASSERT_EQ (0, system.nodes[0]->peers.list ().size ());
 	ASSERT_EQ (0, node1->peers.list ().size ());

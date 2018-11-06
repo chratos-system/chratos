@@ -1,11 +1,11 @@
 #include <windows.h>
 
 #include <processthreadsapi.h>
-#include <rai/lib/utility.hpp>
+#include <chratos/lib/utility.hpp>
 
 typedef HRESULT (*SetThreadDescription_t) (HANDLE, PCWSTR);
 
-void rai::thread_role::set_name (std::string thread_name)
+void chratos::thread_role::set_name (std::string thread_name)
 {
 	SetThreadDescription_t SetThreadDescription_local;
 

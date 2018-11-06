@@ -11,7 +11,7 @@ else ()
 endif ()
 
 # Embed bootstrap representative weights in executable
-if (${ACTIVE_NETWORK} MATCHES "rai_beta_network")
+if (${ACTIVE_NETWORK} MATCHES "chratos_beta_network")
 	set (REP_WEIGHTS_BIN_NAME "rep_weights_beta.bin")
 else ()
 	set (REP_WEIGHTS_BIN_NAME "rep_weights_live.bin")
