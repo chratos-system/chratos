@@ -1,8 +1,9 @@
+#include <chratos/chratos_wallet/icon.hpp>
+#include <chratos/lib/utility.hpp>
 #include <chratos/node/cli.hpp>
 #include <chratos/node/rpc.hpp>
 #include <chratos/node/working.hpp>
 #include <chratos/qt/qt.hpp>
-#include <chratos/chratos_wallet/icon.hpp>
 
 #include <boost/make_shared.hpp>
 #include <boost/program_options.hpp>
@@ -122,6 +123,8 @@ public:
 		tree_a.put ("wallet", wallet_string);
 		tree_a.put ("account", account.to_account ());
 		boost::property_tree::ptree node_l;
+		node.enable_voting = false;
+		node.bootstrap_connections_max = 4;
 		node.serialize_json (node_l);
 		tree_a.add_child ("node", node_l);
 		boost::property_tree::ptree rpc_l;
@@ -190,7 +193,9 @@ bool update_config (qt_wallet_config & config_a, boost::filesystem::path const &
 int run_wallet (QApplication & application, int argc, char * const * argv, boost::filesystem::path const & data_path)
 {
 	chratos_qt::eventloop_processor processor;
+	boost::system::error_code error_chmod;
 	boost::filesystem::create_directories (data_path);
+	chratos::set_secure_perm_directory (data_path, error_chmod);
 	QPixmap pixmap (":/logo.png");
 	QSplashScreen * splash = new QSplashScreen (pixmap);
 	splash->show ();
@@ -203,6 +208,7 @@ int run_wallet (QApplication & application, int argc, char * const * argv, boost
 	std::fstream config_file;
 	auto error (chratos::fetch_object (config, config_path, config_file));
 	config_file.close ();
+	chratos::set_secure_perm_file (config_path, error_chmod);
 	if (!error)
 	{
 		boost::asio::io_service service;
@@ -214,7 +220,7 @@ int run_wallet (QApplication & application, int argc, char * const * argv, boost
 		chratos::work_pool work (config.node.work_threads, opencl ? [&opencl](chratos::uint256_union const & root_a) {
 			return opencl->generate_work (root_a);
 		}
-		                                                      : std::function<boost::optional<uint64_t> (chratos::uint256_union const &)> (nullptr));
+		                                                          : std::function<boost::optional<uint64_t> (chratos::uint256_union const &)> (nullptr));
 		chratos::alarm alarm (service);
 		chratos::node_init init;
 		node = std::make_shared<chratos::node> (init, service, data_path, alarm, config.node, work);
@@ -236,7 +242,7 @@ int run_wallet (QApplication & application, int argc, char * const * argv, boost
 			}
 			if (config.account.is_zero () || !wallet->exists (config.account))
 			{
-				chratos::transaction transaction (wallet->store.environment, nullptr, true);
+				auto transaction (wallet->wallets.tx_begin (true));
 				auto existing (wallet->store.begin (transaction));
 				if (existing != wallet->store.end ())
 				{
@@ -285,6 +291,8 @@ int run_wallet (QApplication & application, int argc, char * const * argv, boost
 
 int main (int argc, char * const * argv)
 {
+	chratos::set_umask ();
+
 	try
 	{
 		QApplication application (argc, const_cast<char **> (argv));

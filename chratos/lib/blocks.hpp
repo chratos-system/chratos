@@ -34,8 +34,8 @@ enum class block_type : uint8_t
 	invalid = 0,
 	not_a_block = 1,
 	state = 2,
-  dividend = 3,
-  claim = 4
+	dividend = 3,
+	claim = 4
 };
 class block
 {
@@ -52,8 +52,10 @@ public:
 	virtual chratos::block_hash source () const = 0;
 	// Previous block or account number for open blocks
 	virtual chratos::block_hash root () const = 0;
-  // Previous dividend for blocks or zero if there isn't one
-  virtual chratos::block_hash dividend () const = 0;
+	// Link field for state blocks, zero otherwise.
+	virtual chratos::block_hash link () const = 0;
+	// Previous dividend for blocks or zero if there isn't one
+	virtual chratos::block_hash dividend () const = 0;
 	virtual chratos::account representative () const = 0;
   virtual chratos::account account () const = 0;
 	virtual void serialize (chratos::stream &) const = 0;
@@ -87,7 +89,7 @@ public:
 	chratos::amount balance;
 	// Link field contains source block_hash if receiving, destination account if sending or the dividend block_hash if a dividend.
 	chratos::uint256_union link;
-  chratos::block_hash dividend;
+	chratos::block_hash dividend;
 };
 class state_block : public chratos::block
 {
@@ -103,7 +105,8 @@ public:
 	chratos::block_hash previous () const override;
 	chratos::block_hash source () const override;
 	chratos::block_hash root () const override;
-  chratos::block_hash dividend () const override;
+	chratos::block_hash link () const override;
+	chratos::block_hash dividend () const override;
 	chratos::account representative () const override;
   chratos::account account () const override;
 	void serialize (chratos::stream &) const override;
@@ -131,9 +134,9 @@ public:
 	void hash (blake2b_state &) const;
 	chratos::account account;
 	chratos::block_hash previous;
-  chratos::account representative;
+	chratos::account representative;
 	chratos::amount balance;
-  chratos::block_hash dividend;
+	chratos::block_hash dividend;
 };
 class dividend_block : public chratos::block
 {
@@ -149,7 +152,8 @@ public:
 	chratos::block_hash previous () const override;
 	chratos::block_hash source () const override;
 	chratos::block_hash root () const override;
-  chratos::block_hash dividend () const override;
+	chratos::block_hash dividend () const override;
+	chratos::block_hash link () const override;
 	chratos::account representative () const override;
   chratos::account account () const override;
 	void serialize (chratos::stream &) const override;
@@ -177,9 +181,9 @@ public:
 	void hash (blake2b_state &) const;
 	chratos::account account;
 	chratos::block_hash previous;
-  chratos::account representative;
+	chratos::account representative;
 	chratos::amount balance;
-  chratos::block_hash dividend;
+	chratos::block_hash dividend;
 };
 class claim_block : public chratos::block
 {
@@ -195,7 +199,8 @@ public:
 	chratos::block_hash previous () const override;
 	chratos::block_hash source () const override;
 	chratos::block_hash root () const override;
-  chratos::block_hash dividend () const override;
+	chratos::block_hash dividend () const override;
+	chratos::block_hash link () const override;
 	chratos::account representative () const override;
   chratos::account account () const override;
 	void serialize (chratos::stream &) const override;
@@ -219,8 +224,8 @@ class block_visitor
 {
 public:
 	virtual void state_block (chratos::state_block const &) = 0;
-  virtual void dividend_block (chratos::dividend_block const &) = 0;
-  virtual void claim_block (chratos::claim_block const &) = 0;
+	virtual void dividend_block (chratos::dividend_block const &) = 0;
+	virtual void claim_block (chratos::claim_block const &) = 0;
 	virtual ~block_visitor () = default;
 };
 std::unique_ptr<chratos::block> deserialize_block (chratos::stream &);

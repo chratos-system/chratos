@@ -1,11 +1,67 @@
 #pragma once
 
-#include <chratos/node/lmdb.hpp>
 #include <chratos/secure/common.hpp>
 
 namespace chratos
 {
+class transaction;
 class block_store;
+/**
+ * Determine the balance as of this block
+ */
+class balance_visitor : public chratos::block_visitor
+{
+public:
+	balance_visitor (chratos::transaction const &, chratos::block_store &);
+	virtual ~balance_visitor () = default;
+	void compute (chratos::block_hash const &);
+	void state_block (chratos::state_block const &) override;
+	void dividend_block (chratos::dividend_block const &) override;
+	void claim_block (chratos::claim_block const &) override;
+	chratos::transaction const & transaction;
+	chratos::block_store & store;
+	chratos::block_hash current_balance;
+	chratos::block_hash current_amount;
+	chratos::uint128_t balance;
+};
+
+/**
+ * Determine the amount delta resultant from this block
+ */
+class amount_visitor : public chratos::block_visitor
+{
+public:
+	amount_visitor (chratos::transaction const &, chratos::block_store &);
+	virtual ~amount_visitor () = default;
+	void compute (chratos::block_hash const &);
+	void state_block (chratos::state_block const &) override;
+	void dividend_block (chratos::dividend_block const &) override;
+	void claim_block (chratos::claim_block const &) override;
+	void from_send (chratos::block_hash const &);
+	chratos::transaction const & transaction;
+	chratos::block_store & store;
+	chratos::block_hash current_amount;
+	chratos::block_hash current_balance;
+	chratos::uint128_t amount;
+};
+
+/**
+ * Determine the representative for this block
+ */
+class representative_visitor : public chratos::block_visitor
+{
+public:
+	representative_visitor (chratos::transaction const & transaction_a, chratos::block_store & store_a);
+	virtual ~representative_visitor () = default;
+	void compute (chratos::block_hash const & hash_a);
+	void state_block (chratos::state_block const & block_a) override;
+	void dividend_block (chratos::dividend_block const & block_a) override;
+	void claim_block (chratos::claim_block const &) override;
+	chratos::transaction const & transaction;
+	chratos::block_store & store;
+	chratos::block_hash current;
+	chratos::block_hash result;
+};
 template <typename T, typename U>
 class store_iterator_impl
 {
@@ -13,7 +69,6 @@ public:
 	virtual ~store_iterator_impl () = default;
 	virtual chratos::store_iterator_impl<T, U> & operator++ () = 0;
 	virtual bool operator== (chratos::store_iterator_impl<T, U> const & other_a) const = 0;
-	virtual void next_dup () = 0;
 	virtual bool is_end_sentinal () const = 0;
 	virtual void fill (std::pair<T, U> &) const = 0;
 	chratos::store_iterator_impl<T, U> & operator= (chratos::store_iterator_impl<T, U> const &) = delete;
@@ -26,39 +81,12 @@ public:
 		return !(*this == other_a);
 	}
 };
-template <typename T, typename U>
-class mdb_iterator : public store_iterator_impl<T, U>
-{
-public:
-	mdb_iterator (MDB_txn * transaction_a, MDB_dbi db_a, chratos::epoch = chratos::epoch::unspecified);
-	mdb_iterator (std::nullptr_t, chratos::epoch = chratos::epoch::unspecified);
-	mdb_iterator (MDB_txn * transaction_a, MDB_dbi db_a, MDB_val const & val_a, chratos::epoch = chratos::epoch::unspecified);
-	mdb_iterator (chratos::mdb_iterator<T, U> && other_a);
-	mdb_iterator (chratos::mdb_iterator<T, U> const &) = delete;
-	~mdb_iterator ();
-	chratos::store_iterator_impl<T, U> & operator++ () override;
-	std::pair<chratos::mdb_val, chratos::mdb_val> * operator-> ();
-	bool operator== (chratos::store_iterator_impl<T, U> const & other_a) const override;
-	void next_dup () override;
-	bool is_end_sentinal () const override;
-	void fill (std::pair<T, U> &) const override;
-	void clear ();
-	chratos::mdb_iterator<T, U> & operator= (chratos::mdb_iterator<T, U> && other_a);
-	chratos::store_iterator_impl<T, U> & operator= (chratos::store_iterator_impl<T, U> const &) = delete;
-	MDB_cursor * cursor;
-	std::pair<chratos::mdb_val, chratos::mdb_val> current;
-};
-template <typename T, typename U>
-class mdb_merge_iterator;
 /**
  * Iterates the key/value pairs of a transaction
  */
 template <typename T, typename U>
 class store_iterator
 {
-	friend class chratos::block_store;
-	friend class chratos::mdb_merge_iterator<T, U>;
-
 public:
 	store_iterator (std::nullptr_t)
 	{
@@ -106,33 +134,19 @@ private:
 
 class block_predecessor_set;
 
-/**
- * Iterates the key/value pairs of two stores merged together
- */
-template <typename T, typename U>
-class mdb_merge_iterator : public store_iterator_impl<T, U>
+class transaction_impl
 {
 public:
-	mdb_merge_iterator (MDB_txn *, MDB_dbi, MDB_dbi);
-	mdb_merge_iterator (std::nullptr_t);
-	mdb_merge_iterator (MDB_txn *, MDB_dbi, MDB_dbi, MDB_val const &);
-	mdb_merge_iterator (chratos::mdb_merge_iterator<T, U> &&);
-	mdb_merge_iterator (chratos::mdb_merge_iterator<T, U> const &) = delete;
-	~mdb_merge_iterator ();
-	chratos::store_iterator_impl<T, U> & operator++ () override;
-	std::pair<chratos::mdb_val, chratos::mdb_val> * operator-> ();
-	bool operator== (chratos::store_iterator_impl<T, U> const &) const override;
-	void next_dup () override;
-	bool is_end_sentinal () const override;
-	void fill (std::pair<T, U> &) const override;
-	void clear ();
-	chratos::mdb_merge_iterator<T, U> & operator= (chratos::mdb_merge_iterator<T, U> &&) = default;
-	chratos::mdb_merge_iterator<T, U> & operator= (chratos::mdb_merge_iterator<T, U> const &) = delete;
-
-private:
-	chratos::mdb_iterator<T, U> & least_iterator () const;
-	std::unique_ptr<chratos::mdb_iterator<T, U>> impl1;
-	std::unique_ptr<chratos::mdb_iterator<T, U>> impl2;
+	virtual ~transaction_impl () = default;
+};
+/**
+ * RAII wrapper of MDB_txn where the constructor starts the transaction
+ * and the destructor commits it.
+ */
+class transaction
+{
+public:
+	std::unique_ptr<chratos::transaction_impl> impl;
 };
 
 /**
@@ -140,252 +154,115 @@ private:
  */
 class block_store
 {
-	friend class chratos::block_predecessor_set;
-
 public:
-	block_store (bool &, boost::filesystem::path const &, int lmdb_max_dbs = 128);
+	virtual ~block_store () = default;
+	virtual void initialize (chratos::transaction const &, chratos::genesis const &) = 0;
+	virtual void block_put (chratos::transaction const &, chratos::block_hash const &, chratos::block const &, chratos::block_hash const & = chratos::block_hash (0), chratos::epoch version = chratos::epoch::epoch_0) = 0;
+	virtual chratos::block_hash block_successor (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual void block_successor_clear (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual std::unique_ptr<chratos::block> block_get (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual std::unique_ptr<chratos::block> block_random (chratos::transaction const &) = 0;
+	virtual void block_del (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual bool block_exists (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual chratos::block_counts block_count (chratos::transaction const &) = 0;
+	virtual bool root_exists (chratos::transaction const &, chratos::uint256_union const &) = 0;
 
-	void initialize (MDB_txn *, chratos::genesis const &);
-	void block_put (MDB_txn *, chratos::block_hash const &, chratos::block const &, chratos::block_hash const & = chratos::block_hash (0), chratos::epoch version = chratos::epoch::epoch_0);
-	chratos::block_hash block_successor (MDB_txn *, chratos::block_hash const &);
-	void block_successor_clear (MDB_txn *, chratos::block_hash const &);
-	std::unique_ptr<chratos::block> block_get (MDB_txn *, chratos::block_hash const &);
-	std::unique_ptr<chratos::block> block_random (MDB_txn *);
-	void block_del (MDB_txn *, chratos::block_hash const &);
-	bool block_exists (MDB_txn *, chratos::block_hash const &);
-	chratos::block_counts block_count (MDB_txn *);
-	bool root_exists (MDB_txn *, chratos::uint256_union const &);
+	virtual void frontier_put (chratos::transaction const &, chratos::block_hash const &, chratos::account const &) = 0;
+	virtual chratos::account frontier_get (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual void frontier_del (chratos::transaction const &, chratos::block_hash const &) = 0;
 
-	void frontier_put (MDB_txn *, chratos::block_hash const &, chratos::account const &);
-	chratos::account frontier_get (MDB_txn *, chratos::block_hash const &);
-	void frontier_del (MDB_txn *, chratos::block_hash const &);
+	virtual void account_put (chratos::transaction const &, chratos::account const &, chratos::account_info const &) = 0;
+	virtual bool account_get (chratos::transaction const &, chratos::account const &, chratos::account_info &) = 0;
+	virtual void account_del (chratos::transaction const &, chratos::account const &) = 0;
+	virtual bool account_exists (chratos::transaction const &, chratos::account const &) = 0;
+	virtual size_t account_count (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::account_info> latest_v0_begin (chratos::transaction const &, chratos::account const &) = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::account_info> latest_v0_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::account_info> latest_v0_end () = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::account_info> latest_v1_begin (chratos::transaction const &, chratos::account const &) = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::account_info> latest_v1_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::account_info> latest_v1_end () = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::account_info> latest_begin (chratos::transaction const &, chratos::account const &) = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::account_info> latest_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::account_info> latest_end () = 0;
+	virtual void dividend_put (chratos::transaction const &, chratos::dividend_info const &) = 0;
+	virtual chratos::dividend_info dividend_get (chratos::transaction const &) = 0;
+	virtual void pending_put (chratos::transaction const &, chratos::pending_key const &, chratos::pending_info const &) = 0;
+	virtual void pending_del (chratos::transaction const &, chratos::pending_key const &) = 0;
+	virtual bool pending_get (chratos::transaction const &, chratos::pending_key const &, chratos::pending_info &) = 0;
+	virtual bool pending_exists (chratos::transaction const &, chratos::pending_key const &) = 0;
+	virtual chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v0_begin (chratos::transaction const &, chratos::pending_key const &) = 0;
+	virtual chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v0_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v0_end () = 0;
+	virtual chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v1_begin (chratos::transaction const &, chratos::pending_key const &) = 0;
+	virtual chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v1_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v1_end () = 0;
+	virtual chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_begin (chratos::transaction const &, chratos::pending_key const &) = 0;
+	virtual chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_end () = 0;
 
-	void account_put (MDB_txn *, chratos::account const &, chratos::account_info const &);
-	bool account_get (MDB_txn *, chratos::account const &, chratos::account_info &);
-	void account_del (MDB_txn *, chratos::account const &);
-	bool account_exists (MDB_txn *, chratos::account const &);
-	size_t account_count (MDB_txn *);
-	chratos::store_iterator<chratos::account, chratos::account_info> latest_v0_begin (MDB_txn *, chratos::account const &);
-	chratos::store_iterator<chratos::account, chratos::account_info> latest_v0_begin (MDB_txn *);
-	chratos::store_iterator<chratos::account, chratos::account_info> latest_v0_end ();
-	chratos::store_iterator<chratos::account, chratos::account_info> latest_v1_begin (MDB_txn *, chratos::account const &);
-	chratos::store_iterator<chratos::account, chratos::account_info> latest_v1_begin (MDB_txn *);
-	chratos::store_iterator<chratos::account, chratos::account_info> latest_v1_end ();
-	chratos::store_iterator<chratos::account, chratos::account_info> latest_begin (MDB_txn *, chratos::account const &);
-	chratos::store_iterator<chratos::account, chratos::account_info> latest_begin (MDB_txn *);
-	chratos::store_iterator<chratos::account, chratos::account_info> latest_end ();
-
-  void dividend_put (MDB_txn *, chratos::dividend_info const &);
-  chratos::dividend_info dividend_get (MDB_txn *);
-
-	void pending_put (MDB_txn *, chratos::pending_key const &, chratos::pending_info const &);
-	void pending_del (MDB_txn *, chratos::pending_key const &);
-	bool pending_get (MDB_txn *, chratos::pending_key const &, chratos::pending_info &);
-	bool pending_exists (MDB_txn *, chratos::pending_key const &);
-	chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v0_begin (MDB_txn *, chratos::pending_key const &);
-	chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v0_begin (MDB_txn *);
-	chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v0_end ();
-	chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v1_begin (MDB_txn *, chratos::pending_key const &);
-	chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v1_begin (MDB_txn *);
-	chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_v1_end ();
-	chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_begin (MDB_txn *, chratos::pending_key const &);
-	chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_begin (MDB_txn *);
-	chratos::store_iterator<chratos::pending_key, chratos::pending_info> pending_end ();
-
-	void block_info_put (MDB_txn *, chratos::block_hash const &, chratos::block_info const &);
-	void block_info_del (MDB_txn *, chratos::block_hash const &);
-	bool block_info_get (MDB_txn *, chratos::block_hash const &, chratos::block_info &);
-	bool block_info_exists (MDB_txn *, chratos::block_hash const &);
-	chratos::store_iterator<chratos::block_hash, chratos::block_info> block_info_begin (MDB_txn *, chratos::block_hash const &);
-	chratos::store_iterator<chratos::block_hash, chratos::block_info> block_info_begin (MDB_txn *);
-	chratos::store_iterator<chratos::block_hash, chratos::block_info> block_info_end ();
-	chratos::uint128_t block_balance (MDB_txn *, chratos::block_hash const &);
-	chratos::epoch block_version (MDB_txn *, chratos::block_hash const &);
+	virtual void block_info_put (chratos::transaction const &, chratos::block_hash const &, chratos::block_info const &) = 0;
+	virtual void block_info_del (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual bool block_info_get (chratos::transaction const &, chratos::block_hash const &, chratos::block_info &) = 0;
+	virtual bool block_info_exists (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual chratos::store_iterator<chratos::block_hash, chratos::block_info> block_info_begin (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual chratos::store_iterator<chratos::block_hash, chratos::block_info> block_info_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::block_hash, chratos::block_info> block_info_end () = 0;
+	virtual chratos::uint128_t block_balance (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual chratos::epoch block_version (chratos::transaction const &, chratos::block_hash const &) = 0;
 	static size_t const block_info_max = 32;
 
-	chratos::uint128_t representation_get (MDB_txn *, chratos::account const &);
-	void representation_put (MDB_txn *, chratos::account const &, chratos::uint128_t const &);
-	void representation_add (MDB_txn *, chratos::account const &, chratos::uint128_t const &);
-	chratos::store_iterator<chratos::account, chratos::uint128_union> representation_begin (MDB_txn *);
-	chratos::store_iterator<chratos::account, chratos::uint128_union> representation_end ();
+	virtual chratos::uint128_t representation_get (chratos::transaction const &, chratos::account const &) = 0;
+	virtual void representation_put (chratos::transaction const &, chratos::account const &, chratos::uint128_t const &) = 0;
+	virtual void representation_add (chratos::transaction const &, chratos::account const &, chratos::uint128_t const &) = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::uint128_union> representation_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::account, chratos::uint128_union> representation_end () = 0;
 
-	void unchecked_clear (MDB_txn *);
-	void unchecked_put (MDB_txn *, chratos::block_hash const &, std::shared_ptr<chratos::block> const &);
-	std::vector<std::shared_ptr<chratos::block>> unchecked_get (MDB_txn *, chratos::block_hash const &);
-	void unchecked_del (MDB_txn *, chratos::block_hash const &, std::shared_ptr<chratos::block>);
-	chratos::store_iterator<chratos::block_hash, std::shared_ptr<chratos::block>> unchecked_begin (MDB_txn *);
-	chratos::store_iterator<chratos::block_hash, std::shared_ptr<chratos::block>> unchecked_begin (MDB_txn *, chratos::block_hash const &);
-	chratos::store_iterator<chratos::block_hash, std::shared_ptr<chratos::block>> unchecked_end ();
-	size_t unchecked_count (MDB_txn *);
-	std::unordered_multimap<chratos::block_hash, std::shared_ptr<chratos::block>> unchecked_cache;
+	virtual void unchecked_clear (chratos::transaction const &) = 0;
+	virtual void unchecked_put (chratos::transaction const &, chratos::block_hash const &, std::shared_ptr<chratos::block> const &) = 0;
+	virtual std::vector<std::shared_ptr<chratos::block>> unchecked_get (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual void unchecked_del (chratos::transaction const &, chratos::block_hash const &, std::shared_ptr<chratos::block>) = 0;
+	virtual chratos::store_iterator<chratos::block_hash, std::shared_ptr<chratos::block>> unchecked_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::block_hash, std::shared_ptr<chratos::block>> unchecked_begin (chratos::transaction const &, chratos::block_hash const &) = 0;
+	virtual chratos::store_iterator<chratos::block_hash, std::shared_ptr<chratos::block>> unchecked_end () = 0;
+	virtual size_t unchecked_count (chratos::transaction const &) = 0;
 
-	void checksum_put (MDB_txn *, uint64_t, uint8_t, chratos::checksum const &);
-	bool checksum_get (MDB_txn *, uint64_t, uint8_t, chratos::checksum &);
-	void checksum_del (MDB_txn *, uint64_t, uint8_t);
+	virtual void checksum_put (chratos::transaction const &, uint64_t, uint8_t, chratos::checksum const &) = 0;
+	virtual bool checksum_get (chratos::transaction const &, uint64_t, uint8_t, chratos::checksum &) = 0;
+	virtual void checksum_del (chratos::transaction const &, uint64_t, uint8_t) = 0;
 
 	// Return latest vote for an account from store
-	std::shared_ptr<chratos::vote> vote_get (MDB_txn *, chratos::account const &);
+	virtual std::shared_ptr<chratos::vote> vote_get (chratos::transaction const &, chratos::account const &) = 0;
 	// Populate vote with the next sequence number
-	std::shared_ptr<chratos::vote> vote_generate (MDB_txn *, chratos::account const &, chratos::raw_key const &, std::shared_ptr<chratos::block>);
-	std::shared_ptr<chratos::vote> vote_generate (MDB_txn *, chratos::account const &, chratos::raw_key const &, std::vector<chratos::block_hash>);
+	virtual std::shared_ptr<chratos::vote> vote_generate (chratos::transaction const &, chratos::account const &, chratos::raw_key const &, std::shared_ptr<chratos::block>) = 0;
+	virtual std::shared_ptr<chratos::vote> vote_generate (chratos::transaction const &, chratos::account const &, chratos::raw_key const &, std::vector<chratos::block_hash>) = 0;
 	// Return either vote or the stored vote with a higher sequence number
-	std::shared_ptr<chratos::vote> vote_max (MDB_txn *, std::shared_ptr<chratos::vote>);
+	virtual std::shared_ptr<chratos::vote> vote_max (chratos::transaction const &, std::shared_ptr<chratos::vote>) = 0;
 	// Return latest vote for an account considering the vote cache
-	std::shared_ptr<chratos::vote> vote_current (MDB_txn *, chratos::account const &);
-	void flush (MDB_txn *);
-	chratos::store_iterator<chratos::account, std::shared_ptr<chratos::vote>> vote_begin (MDB_txn *);
-	chratos::store_iterator<chratos::account, std::shared_ptr<chratos::vote>> vote_end ();
-	std::mutex cache_mutex;
-	std::unordered_map<chratos::account, std::shared_ptr<chratos::vote>> vote_cache;
+	virtual std::shared_ptr<chratos::vote> vote_current (chratos::transaction const &, chratos::account const &) = 0;
+	virtual void flush (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::account, std::shared_ptr<chratos::vote>> vote_begin (chratos::transaction const &) = 0;
+	virtual chratos::store_iterator<chratos::account, std::shared_ptr<chratos::vote>> vote_end () = 0;
 
-	void version_put (MDB_txn *, int);
-	int version_get (MDB_txn *);
-	void do_upgrades (MDB_txn *);
-	void upgrade_v1_to_v2 (MDB_txn *);
-	void upgrade_v2_to_v3 (MDB_txn *);
-	void upgrade_v3_to_v4 (MDB_txn *);
-	void upgrade_v4_to_v5 (MDB_txn *);
-	void upgrade_v5_to_v6 (MDB_txn *);
-	void upgrade_v6_to_v7 (MDB_txn *);
-	void upgrade_v7_to_v8 (MDB_txn *);
-	void upgrade_v8_to_v9 (MDB_txn *);
-	void upgrade_v9_to_v10 (MDB_txn *);
-	void upgrade_v10_to_v11 (MDB_txn *);
-	void upgrade_v11_to_v12 (MDB_txn *);
+	virtual void version_put (chratos::transaction const &, int) = 0;
+	virtual int version_get (chratos::transaction const &) = 0;
 
 	// Requires a write transaction
-	chratos::raw_key get_node_id (MDB_txn *);
+	virtual chratos::raw_key get_node_id (chratos::transaction const &) = 0;
 
 	/** Deletes the node ID from the store */
-	void delete_node_id (MDB_txn *);
+	virtual void delete_node_id (chratos::transaction const &) = 0;
 
-	chratos::mdb_env environment;
+	/** Start read-write transaction */
+	virtual chratos::transaction tx_begin_write () = 0;
 
-	/**
-	 * Maps head block to owning account
-	 * chratos::block_hash -> chratos::account
-	 */
-	MDB_dbi frontiers;
+	/** Start read-only transaction */
+	virtual chratos::transaction tx_begin_read () = 0;
 
 	/**
-	 * Maps account v1 to account information, head, rep, open, balance, timestamp and block count.
-	 * chratos::account -> chratos::block_hash, chratos::block_hash, chratos::block_hash, chratos::amount, uint64_t, uint64_t
+	 * Start a read-only or read-write transaction
+	 * @param write If true, start a read-write transaction
 	 */
-	MDB_dbi accounts_v0;
-
-	/**
-	 * Maps account v0 to account information, head, rep, open, balance, timestamp and block count.
-	 * chratos::account -> chratos::block_hash, chratos::block_hash, chratos::block_hash, chratos::amount, uint64_t, uint64_t
-	 */
-	MDB_dbi accounts_v1;
-
-  /**
-   * Maps the dividend ledger
-   */
-  MDB_dbi dividends_ledger;
-
-	/**
-	 * Maps block hash to send block.
-	 * chratos::block_hash -> chratos::send_block
-	 */
-	MDB_dbi send_blocks;
-
-	/**
-	 * Maps block hash to receive block.
-	 * chratos::block_hash -> chratos::receive_block
-	 */
-	MDB_dbi receive_blocks;
-
-	/**
-	 * Maps block hash to open block.
-	 * chratos::block_hash -> chratos::open_block
-	 */
-	MDB_dbi open_blocks;
-
-	/**
-	 * Maps block hash to change block.
-	 * chratos::block_hash -> chratos::change_block
-	 */
-	MDB_dbi change_blocks;
-
-  /**
-	 * Maps block hash to dividend block.
-	 * chratos::block_hash -> chratos::dividend_block
-   */
-  MDB_dbi dividend_blocks;
-
-  /**
-	 * Maps block hash to dividend block.
-	 * chratos::block_hash -> chratos::dividend_block
-   */
-  MDB_dbi claim_blocks;
-
-	/**
-	 * Maps block hash to v0 state block.
-	 * chratos::block_hash -> chratos::state_block
-	 */
-	MDB_dbi state_blocks_v0;
-
-	/**
-	 * Maps block hash to v1 state block.
-	 * chratos::block_hash -> chratos::state_block
-	 */
-	MDB_dbi state_blocks_v1;
-
-	/**
-	 * Maps min_version 0 (destination account, pending block) to (source account, amount).
-	 * chratos::account, chratos::block_hash -> chratos::account, chratos::amount
-	 */
-	MDB_dbi pending_v0;
-
-	/**
-	 * Maps min_version 1 (destination account, pending block) to (source account, amount).
-	 * chratos::account, chratos::block_hash -> chratos::account, chratos::amount
-	 */
-	MDB_dbi pending_v1;
-
-	/**
-	 * Maps block hash to account and balance.
-	 * block_hash -> chratos::account, chratos::amount
-	 */
-	MDB_dbi blocks_info;
-
-	/**
-	 * Representative weights.
-	 * chratos::account -> chratos::uint128_t
-	 */
-	MDB_dbi representation;
-
-	/**
-	 * Unchecked bootstrap blocks.
-	 * chratos::block_hash -> chratos::block
-	 */
-	MDB_dbi unchecked;
-
-	/**
-	 * Mapping of region to checksum.
-	 * (uint56_t, uint8_t) -> chratos::block_hash
-	 */
-	MDB_dbi checksum;
-
-	/**
-	 * Highest vote observed for account.
-	 * chratos::account -> uint64_t
-	 */
-	MDB_dbi vote;
-
-	/**
-	 * Meta information about block store, such as versions.
-	 * chratos::uint256_union (arbitrary key) -> blob
-	 */
-	MDB_dbi meta;
-
-private:
-	MDB_dbi block_database (chratos::block_type, chratos::epoch);
-	template <typename T>
-	std::unique_ptr<chratos::block> block_random (MDB_txn *, MDB_dbi);
-	MDB_val block_raw_get (MDB_txn *, chratos::block_hash const &, chratos::block_type &);
-	void block_raw_put (MDB_txn *, MDB_dbi, chratos::block_hash const &, MDB_val);
-	void clear (MDB_dbi);
+	virtual chratos::transaction tx_begin (bool write = false) = 0;
 };
 }

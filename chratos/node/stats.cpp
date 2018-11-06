@@ -6,7 +6,6 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
-#include <memory>
 #include <sstream>
 #include <tuple>
 
@@ -325,8 +324,14 @@ std::string chratos::stat::type_to_string (uint32_t key)
 		case chratos::stat::type::error:
 			res = "error";
 			break;
+		case chratos::stat::type::http_callback:
+			res = "http_callback";
+			break;
 		case chratos::stat::type::ledger:
 			res = "ledger";
+			break;
+		case chratos::stat::type::udp:
+			res = "udp";
 			break;
 		case chratos::stat::type::peering:
 			res = "peering";
@@ -365,24 +370,21 @@ std::string chratos::stat::detail_to_string (uint32_t key)
 		case chratos::stat::detail::bulk_pull_account:
 			res = "bulk_pull_account";
 			break;
-		case chratos::stat::detail::bulk_pull_blocks:
-			res = "bulk_pull_blocks";
-			break;
 		case chratos::stat::detail::bulk_push:
 			res = "bulk_push";
 			break;
 		case chratos::stat::detail::change:
 			res = "change";
 			break;
-    case chratos::stat::detail::claim_block:
-      res = "claim_block";
-      break;
+		case chratos::stat::detail::claim_block:
+			res = "claim_block";
+			break;
 		case chratos::stat::detail::confirm_ack:
 			res = "confirm_ack";
 			break;
-    case chratos::stat::detail::dividend_block:
-      res = "dividend_block";
-      break;
+		case chratos::stat::detail::dividend_block:
+			res = "dividend_block";
+			break;
 		case chratos::stat::detail::node_id_handshake:
 			res = "node_id_handshake";
 			break;
@@ -394,6 +396,9 @@ std::string chratos::stat::detail_to_string (uint32_t key)
 			break;
 		case chratos::stat::detail::handshake:
 			res = "handshake";
+			break;
+		case chratos::stat::detail::http_callback:
+			res = "http_callback";
 			break;
 		case chratos::stat::detail::initiate:
 			res = "initiate";
@@ -433,6 +438,45 @@ std::string chratos::stat::detail_to_string (uint32_t key)
 			break;
 		case chratos::stat::detail::vote_invalid:
 			res = "vote_invalid";
+			break;
+		case chratos::stat::detail::blocking:
+			res = "blocking";
+			break;
+		case chratos::stat::detail::overflow:
+			res = "overflow";
+			break;
+		case chratos::stat::detail::unreachable_host:
+			res = "unreachable_host";
+			break;
+		case chratos::stat::detail::invalid_magic:
+			res = "invalid_magic";
+			break;
+		case chratos::stat::detail::invalid_network:
+			res = "invalid_network";
+			break;
+		case chratos::stat::detail::invalid_header:
+			res = "invalid_header";
+			break;
+		case chratos::stat::detail::invalid_message_type:
+			res = "invalid_message_type";
+			break;
+		case chratos::stat::detail::invalid_keepalive_message:
+			res = "invalid_keepalive_message";
+			break;
+		case chratos::stat::detail::invalid_publish_message:
+			res = "invalid_publish_message";
+			break;
+		case chratos::stat::detail::invalid_confirm_req_message:
+			res = "invalid_confirm_req_message";
+			break;
+		case chratos::stat::detail::invalid_confirm_ack_message:
+			res = "invalid_confirm_ack_message";
+			break;
+		case chratos::stat::detail::invalid_node_id_handshake_message:
+			res = "invalid_node_id_handshake_message";
+			break;
+		case chratos::stat::detail::outdated_version:
+			res = "outdated_version";
 			break;
 	}
 	return res;

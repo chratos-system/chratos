@@ -11,8 +11,14 @@ else ()
 endif ()
 
 # Embed bootstrap representative weights in executable
-file (READ ${CMAKE_SOURCE_DIR}/rep_weights.bin filedata HEX)
-#string (REGEX REPLACE "(..)" "0x\\1," filedata ${filedata})
+if (${ACTIVE_NETWORK} MATCHES "rai_beta_network")
+	set (REP_WEIGHTS_BIN_NAME "rep_weights_beta.bin")
+else ()
+	set (REP_WEIGHTS_BIN_NAME "rep_weights_live.bin")
+endif ()
+
+file (READ ${CMAKE_SOURCE_DIR}/${REP_WEIGHTS_BIN_NAME} filedata HEX)
+# string (REGEX REPLACE "(..)" "0x\\1," filedata ${filedata})
 file (WRITE ${CMAKE_BINARY_DIR}/bootstrap_weights.cpp "#include <cstddef>\n"
 	"namespace chratos {\n"
   #"	unsigned char chratos_bootstrap_weights[] = {${filedata} 0x00};\n"

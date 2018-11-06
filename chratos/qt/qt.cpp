@@ -118,8 +118,8 @@ void chratos_qt::self_pane::refresh_balance ()
 }
 
 chratos_qt::accounts::accounts (chratos_qt::wallet & wallet_a) :
-window (new QWidget),
 wallet_balance_label (new QLabel),
+window (new QWidget),
 layout (new QVBoxLayout),
 model (new QStandardItemModel),
 view (new QTableView),
@@ -184,7 +184,7 @@ wallet (wallet_a)
 		this->wallet.pop_main_stack ();
 	});
 	QObject::connect (create_account, &QPushButton::released, [this]() {
-		chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, true);
+		auto transaction (this->wallet.wallet_m->wallets.tx_begin_write ());
 		if (this->wallet.wallet_m->store.valid_password (transaction))
 		{
 			this->wallet.wallet_m->deterministic_insert (transaction);
@@ -215,7 +215,7 @@ wallet (wallet_a)
 	});
 	QObject::connect (backup_seed, &QPushButton::released, [this]() {
 		chratos::raw_key seed;
-		chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, false);
+		auto transaction (this->wallet.wallet_m->wallets.tx_begin_read ());
 		if (this->wallet.wallet_m->store.valid_password (transaction))
 		{
 			this->wallet.wallet_m->store.seed (seed, transaction);
@@ -252,7 +252,7 @@ wallet (wallet_a)
 
 void chratos_qt::accounts::refresh_wallet_balance ()
 {
-	chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, false);
+	auto transaction (this->wallet.wallet_m->wallets.tx_begin_read ());
 	chratos::uint128_t balance (0);
 	chratos::uint128_t pending (0);
 	for (auto i (this->wallet.wallet_m->store.begin (transaction)), j (this->wallet.wallet_m->store.end ()); i != j; ++i)
@@ -277,7 +277,7 @@ void chratos_qt::accounts::refresh_wallet_balance ()
 void chratos_qt::accounts::refresh ()
 {
 	model->removeRows (0, model->rowCount ());
-	chratos::transaction transaction (wallet.wallet_m->store.environment, nullptr, false);
+	auto transaction (wallet.wallet_m->wallets.tx_begin_read ());
 	QBrush brush;
 	for (auto i (wallet.wallet_m->store.begin (transaction)), j (wallet.wallet_m->store.end ()); i != j; ++i)
 	{
@@ -352,7 +352,7 @@ wallet (wallet_a)
   });
 
   QObject::connect (claim_dividend, &QPushButton::released, [this]() {
-      chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, false);
+      auto transaction (this->wallet.wallet_m->wallets.tx_begin_read ());
 
 		auto selection (view->selectionModel ()->selection ().indexes ());
 
@@ -393,7 +393,7 @@ wallet (wallet_a)
 
 void chratos_qt::dividends::refresh_dividends_paid ()
 {
-	chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, false);
+  auto transaction (this->wallet.wallet_m->wallets.tx_begin_read ());
 
 	chratos::uint128_t paid (0);
 
@@ -421,7 +421,7 @@ void chratos_qt::dividends::refresh_dividends_paid ()
 void chratos_qt::dividends::refresh ()
 {
 	model->removeRows (0, model->rowCount ());
-	chratos::transaction transaction (wallet.wallet_m->store.environment, nullptr, false);
+      auto transaction (this->wallet.wallet_m->wallets.tx_begin_read ());
 
   auto dividend_info (this->wallet.node.store.dividend_get (transaction));
 
@@ -497,7 +497,7 @@ wallet (wallet_a)
 void chratos_qt::claims_viewer::refresh ()
 {
 	model->removeRows (0, model->rowCount ());
-	chratos::transaction transaction (wallet.wallet_m->store.environment, nullptr, false);
+  auto transaction (this->wallet.wallet_m->wallets.tx_begin_read ());
 
   chratos::account_info info;
 
@@ -602,7 +602,7 @@ wallet (wallet_a)
 			{
 				bool successful (false);
 				{
-					chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, true);
+					auto transaction (this->wallet.wallet_m->wallets.tx_begin_write ());
 					if (this->wallet.wallet_m->store.valid_password (transaction))
 					{
 						this->wallet.account = this->wallet.wallet_m->change_seed (transaction, seed_l);
@@ -722,7 +722,7 @@ namespace
 class short_text_visitor : public chratos::block_visitor
 {
 public:
-	short_text_visitor (MDB_txn * transaction_a, chratos::ledger & ledger_a) :
+	short_text_visitor (chratos::transaction const & transaction_a, chratos::ledger & ledger_a) :
 	transaction (transaction_a),
 	ledger (ledger_a)
 	{
@@ -744,7 +744,7 @@ public:
 				type = "Change";
 				account = block_a.hashables.representative;
 			}
-			else if (balance == previous_balance && !ledger.epoch_link.is_zero () && block_a.hashables.link == ledger.epoch_link)
+			else if (balance == previous_balance && !ledger.epoch_link.is_zero () && ledger.is_epoch_link (block_a.hashables.link))
 			{
 				type = "Epoch";
 				account = ledger.epoch_signer;
@@ -757,23 +757,23 @@ public:
 			amount = balance - previous_balance;
 		}
 	}
-  void dividend_block (chratos::dividend_block const & block_a)
-  {
+	void dividend_block (chratos::dividend_block const & block_a)
+	{
 		auto balance (block_a.hashables.balance.number ());
 		auto previous_balance (ledger.balance (transaction, block_a.hashables.previous));
-    type = "Dividend";
-    amount = previous_balance - balance;
-    account = block_a.hashables.dividend;
-  }
-  void claim_block (chratos::claim_block const & block_a)
-  {
+		type = "Dividend";
+		amount = previous_balance - balance;
+		account = block_a.hashables.dividend;
+	}
+	void claim_block (chratos::claim_block const & block_a)
+	{
 		auto balance (block_a.hashables.balance.number ());
 		auto previous_balance (ledger.balance (transaction, block_a.hashables.previous));
-    type = "Claim";
-    amount = balance - previous_balance;
-    account = block_a.hashables.dividend;
-  }
-	MDB_txn * transaction;
+		type = "Claim";
+		amount = balance - previous_balance;
+		account = block_a.hashables.dividend;
+	}
+	chratos::transaction const & transaction;
 	chratos::ledger & ledger;
 	std::string type;
 	chratos::uint128_t amount;
@@ -783,7 +783,7 @@ public:
 
 void chratos_qt::history::refresh ()
 {
-	chratos::transaction transaction (ledger.store.environment, nullptr, false);
+	auto transaction (ledger.store.tx_begin_read ());
 	model->removeRows (0, model->rowCount ());
 	auto hash (ledger.latest (transaction, account));
 	short_text_visitor visitor (transaction, ledger);
@@ -837,7 +837,7 @@ wallet (wallet_a)
 		chratos::block_hash hash_l;
 		if (!hash_l.decode_hex (hash->text ().toStdString ()))
 		{
-			chratos::transaction transaction (this->wallet.node.store.environment, nullptr, false);
+			auto transaction (this->wallet.node.store.tx_begin_read ());
 			auto block_l (this->wallet.node.store.block_get (transaction, hash_l));
 			if (block_l != nullptr)
 			{
@@ -862,7 +862,7 @@ wallet (wallet_a)
 		auto error (block.decode_hex (hash->text ().toStdString ()));
 		if (!error)
 		{
-			chratos::transaction transaction (this->wallet.node.store.environment, nullptr, false);
+			auto transaction (this->wallet.node.store.tx_begin_read ());
 			if (this->wallet.node.store.block_exists (transaction, block))
 			{
 				rebroadcast->setEnabled (false);
@@ -883,11 +883,11 @@ wallet (wallet_a)
 void chratos_qt::block_viewer::rebroadcast_action (chratos::uint256_union const & hash_a)
 {
 	auto done (true);
-	chratos::transaction transaction (wallet.node.ledger.store.environment, nullptr, false);
+	auto transaction (wallet.node.ledger.store.tx_begin_read ());
 	auto block (wallet.node.store.block_get (transaction, hash_a));
 	if (block != nullptr)
 	{
-		wallet.node.network.republish_block (transaction, std::move (block));
+		wallet.node.network.republish_block (std::move (block));
 		auto successor (wallet.node.store.block_successor (transaction, hash_a));
 		if (!successor.is_zero ())
 		{
@@ -914,7 +914,7 @@ refresh (new QPushButton ("Refresh")),
 balance_window (new QWidget),
 balance_layout (new QHBoxLayout),
 balance_label (new QLabel),
-history (wallet_a.wallet_m->node.ledger, account, wallet_a),
+history (wallet_a.node.ledger, account, wallet_a),
 back (new QPushButton ("Back")),
 account (wallet_a.account),
 wallet (wallet_a)
@@ -963,9 +963,9 @@ wallet (wallet_a)
 chratos_qt::stats_viewer::stats_viewer (chratos_qt::wallet & wallet_a) :
 window (new QWidget),
 layout (new QVBoxLayout),
+refresh (new QPushButton ("Refresh")),
 model (new QStandardItemModel),
 view (new QTableView),
-refresh (new QPushButton ("Refresh")),
 back (new QPushButton ("Back")),
 wallet (wallet_a)
 {
@@ -1078,9 +1078,9 @@ std::string chratos_qt::status::text ()
 	size_t unchecked (0);
 	std::string count_string;
 	{
-		chratos::transaction transaction (wallet.wallet_m->node.store.environment, nullptr, false);
-		auto size (wallet.wallet_m->node.store.block_count (transaction));
-		unchecked = wallet.wallet_m->node.store.unchecked_count (transaction);
+		auto transaction (wallet.wallet_m->wallets.node.store.tx_begin_read ());
+		auto size (wallet.wallet_m->wallets.node.store.block_count (transaction));
+		unchecked = wallet.wallet_m->wallets.node.store.unchecked_count (transaction);
 		count_string = std::to_string (size.sum ());
 	}
 
@@ -1113,7 +1113,7 @@ std::string chratos_qt::status::text ()
 	}
 
 	result += ", Block: ";
-	if (unchecked != 0 && wallet.wallet_m->node.bootstrap_initiator.in_progress ())
+	if (unchecked != 0 && wallet.node.bootstrap_initiator.in_progress ())
 	{
 		count_string += " (" + std::to_string (unchecked) + ")";
 	}
@@ -1302,7 +1302,7 @@ void chratos_qt::wallet::start ()
 						auto balance (this_l->node.balance (this_l->account));
 						if (actual <= balance)
 						{
-							chratos::transaction transaction (this_l->wallet_m->store.environment, nullptr, false);
+							auto transaction (this_l->wallet_m->wallets.tx_begin_read ());
 							if (this_l->wallet_m->store.valid_password (transaction))
 							{
 								this_l->send_blocks_send->setEnabled (false);
@@ -1570,7 +1570,7 @@ void chratos_qt::wallet::start ()
 void chratos_qt::wallet::refresh ()
 {
 	{
-		chratos::transaction transaction (wallet_m->store.environment, nullptr, false);
+		auto transaction (wallet_m->wallets.tx_begin_read ());
 		assert (wallet_m->store.exists (transaction, account));
 	}
 	self.account_text->setText (QString (account.to_account ().c_str ()));
@@ -1596,7 +1596,8 @@ void chratos_qt::wallet::update_connected ()
 void chratos_qt::wallet::empty_password ()
 {
 	this->node.alarm.add (std::chrono::steady_clock::now () + std::chrono::seconds (3), [this]() {
-		wallet_m->enter_password (std::string (""));
+		auto transaction (wallet_m->wallets.tx_begin_write ());
+		wallet_m->enter_password (transaction, std::string (""));
 	});
 }
 
@@ -1678,7 +1679,7 @@ wallet (wallet_a)
 	layout->addWidget (back);
 	window->setLayout (layout);
 	QObject::connect (change, &QPushButton::released, [this]() {
-		chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, true);
+		auto transaction (this->wallet.wallet_m->wallets.tx_begin_write ());
 		if (this->wallet.wallet_m->store.valid_password (transaction))
 		{
 			if (new_password->text ().isEmpty ())
@@ -1729,15 +1730,15 @@ wallet (wallet_a)
 		chratos::account representative_l;
 		if (!representative_l.decode_account (new_representative->text ().toStdString ()))
 		{
-			chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, false);
+			auto transaction (this->wallet.wallet_m->wallets.tx_begin_read ());
 			if (this->wallet.wallet_m->store.valid_password (transaction))
 			{
 				change_rep->setEnabled (false);
 				{
-					chratos::transaction transaction_l (this->wallet.wallet_m->store.environment, nullptr, true);
+					auto transaction_l (this->wallet.wallet_m->wallets.tx_begin_write ());
 					this->wallet.wallet_m->store.representative_set (transaction_l, representative_l);
 				}
-				auto block (this->wallet.wallet_m->change_sync (this->wallet.account, representative_l));
+				this->wallet.wallet_m->change_sync (this->wallet.account, representative_l);
 				change_rep->setEnabled (true);
 				show_button_success (*change_rep);
 				change_rep->setText ("Representative was changed");
@@ -1781,7 +1782,7 @@ wallet (wallet_a)
 		this->wallet.pop_main_stack ();
 	});
 	QObject::connect (lock_toggle, &QPushButton::released, [this]() {
-		chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, true);
+		auto transaction (this->wallet.wallet_m->wallets.tx_begin_write ());
 		if (this->wallet.wallet_m->store.valid_password (transaction))
 		{
 			// lock wallet
@@ -1795,7 +1796,7 @@ wallet (wallet_a)
 		else
 		{
 			// try to unlock wallet
-			if (!this->wallet.wallet_m->enter_password (std::string (password->text ().toLocal8Bit ())))
+			if (!this->wallet.wallet_m->enter_password (transaction, std::string (password->text ().toLocal8Bit ())))
 			{
 				password->clear ();
 				lock_toggle->setText ("Lock");
@@ -1812,7 +1813,7 @@ wallet (wallet_a)
 						show_button_ok (*lock_toggle);
 
 						// if wallet is still not unlocked by now, change button text
-						chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, true);
+						auto transaction (this->wallet.wallet_m->wallets.tx_begin_write ());
 						if (!this->wallet.wallet_m->store.valid_password (transaction))
 						{
 							lock_toggle->setText ("Unlock");
@@ -1829,7 +1830,7 @@ wallet (wallet_a)
 	});
 
 	// initial state for lock toggle button
-	chratos::transaction transaction (this->wallet.wallet_m->store.environment, nullptr, true);
+	auto transaction (this->wallet.wallet_m->wallets.tx_begin_write ());
 	if (this->wallet.wallet_m->store.valid_password (transaction))
 	{
 		lock_toggle->setText ("Lock");
@@ -1842,12 +1843,12 @@ wallet (wallet_a)
 
 void chratos_qt::settings::refresh_representative ()
 {
-	chratos::transaction transaction (this->wallet.wallet_m->node.store.environment, nullptr, false);
+	auto transaction (this->wallet.wallet_m->wallets.node.store.tx_begin_read ());
 	chratos::account_info info;
-	auto error (this->wallet.wallet_m->node.store.account_get (transaction, this->wallet.account, info));
+	auto error (wallet.node.store.account_get (transaction, this->wallet.account, info));
 	if (!error)
 	{
-		auto block (this->wallet.wallet_m->node.store.block_get (transaction, info.rep_block));
+		auto block (wallet.node.store.block_get (transaction, info.rep_block));
 		assert (block != nullptr);
 		current_representative->setText (QString (block->representative ().to_account ().c_str ()));
 	}
@@ -1900,9 +1901,9 @@ scale_window (new QWidget),
 scale_layout (new QHBoxLayout),
 scale_label (new QLabel ("Scale:")),
 ratio_group (new QButtonGroup),
-mchratos (new QRadioButton ("Mchr")),
-kchratos (new QRadioButton ("kchr")),
-chratos (new QRadioButton ("chr")),
+mchratos_unit (new QRadioButton ("Mchr")),
+kchratos_unit (new QRadioButton ("kchr")),
+chratos_unit (new QRadioButton ("chr")),
 back (new QPushButton ("Back")),
 ledger_window (new QWidget),
 ledger_layout (new QVBoxLayout),
@@ -1923,16 +1924,16 @@ peers_refresh (new QPushButton ("Refresh")),
 peers_back (new QPushButton ("Back")),
 wallet (wallet_a)
 {
-	ratio_group->addButton (mchratos);
-	ratio_group->addButton (kchratos);
-	ratio_group->addButton (chratos);
-	ratio_group->setId (mchratos, 0);
-	ratio_group->setId (kchratos, 1);
-	ratio_group->setId (chratos, 2);
+	ratio_group->addButton (mchratos_unit);
+	ratio_group->addButton (kchratos_unit);
+	ratio_group->addButton (chratos_unit);
+	ratio_group->setId (mchratos_unit, 0);
+	ratio_group->setId (kchratos_unit, 1);
+	ratio_group->setId (chratos_unit, 2);
 	scale_layout->addWidget (scale_label);
-	scale_layout->addWidget (mchratos);
-	scale_layout->addWidget (kchratos);
-	scale_layout->addWidget (chratos);
+	scale_layout->addWidget (mchratos_unit);
+	scale_layout->addWidget (kchratos_unit);
+	scale_layout->addWidget (chratos_unit);
 	scale_window->setLayout (scale_layout);
 
 	ledger_model->setHorizontalHeaderItem (0, new QStandardItem ("Account"));
@@ -1971,7 +1972,7 @@ wallet (wallet_a)
 	layout->addWidget (show_ledger);
 	layout->addWidget (show_peers);
 	layout->addWidget (search_for_receivables);
-  layout->addWidget (claim_dividends);
+	layout->addWidget (claim_dividends);
 	layout->addWidget (bootstrap);
 	layout->addWidget (wallet_refresh);
 	layout->addWidget (create_block);
@@ -1984,25 +1985,39 @@ wallet (wallet_a)
 	layout->addWidget (back);
 	window->setLayout (layout);
 
-	QObject::connect (mchratos, &QRadioButton::toggled, [this]() {
-		if (mchratos->isChecked ())
+	QObject::connect (mchratos_unit, &QRadioButton::toggled, [this]() {
+		if (mchratos_unit->isChecked ())
 		{
+			QSettings ().setValue (saved_ratio_key, ratio_group->id (mchratos_unit));
 			this->wallet.change_rendering_ratio (chratos::Mchr_ratio);
 		}
 	});
-	QObject::connect (kchratos, &QRadioButton::toggled, [this]() {
-		if (kchratos->isChecked ())
+	QObject::connect (kchratos_unit, &QRadioButton::toggled, [this]() {
+		if (kchratos_unit->isChecked ())
 		{
+			QSettings ().setValue (saved_ratio_key, ratio_group->id (kchratos_unit));
 			this->wallet.change_rendering_ratio (chratos::kchr_ratio);
 		}
 	});
-	QObject::connect (chratos, &QRadioButton::toggled, [this]() {
-		if (chratos->isChecked ())
+	QObject::connect (chratos_unit, &QRadioButton::toggled, [this]() {
+		if (chratos_unit->isChecked ())
 		{
+			QSettings ().setValue (saved_ratio_key, ratio_group->id (chratos_unit));
 			this->wallet.change_rendering_ratio (chratos::chr_ratio);
 		}
 	});
-	mchratos->click ();
+	auto selected_ratio_id (QSettings ().value (saved_ratio_key, ratio_group->id (mchratos_unit)).toInt ());
+	auto selected_ratio_button = ratio_group->button (selected_ratio_id);
+	assert (selected_ratio_button != nullptr);
+
+	if (selected_ratio_button)
+	{
+		selected_ratio_button->click ();
+	}
+	else
+	{
+		mchratos_unit->click ();
+	}
 	QObject::connect (wallet_refresh, &QPushButton::released, [this]() {
 		this->wallet.accounts.refresh ();
 		this->wallet.accounts.refresh_wallet_balance ();
@@ -2046,9 +2061,9 @@ wallet (wallet_a)
 	QObject::connect (search_for_receivables, &QPushButton::released, [this]() {
 		this->wallet.wallet_m->search_pending ();
 	});
-  QObject::connect (claim_dividends, &QPushButton::released, [this]() {
-    this->wallet.wallet_m->claim_dividends ();
-  });
+	QObject::connect (claim_dividends, &QPushButton::released, [this]() {
+		this->wallet.wallet_m->claim_dividends ();
+	});
 	QObject::connect (bootstrap, &QPushButton::released, [this]() {
 		this->wallet.node.bootstrap_initiator.bootstrap ();
 	});
@@ -2099,7 +2114,7 @@ void chratos_qt::advanced_actions::refresh_peers ()
 void chratos_qt::advanced_actions::refresh_ledger ()
 {
 	ledger_model->removeRows (0, ledger_model->rowCount ());
-	chratos::transaction transaction (wallet.node.store.environment, nullptr, false);
+	auto transaction (wallet.node.store.tx_begin_read ());
 	for (auto i (wallet.node.ledger.store.latest_begin (transaction)), j (wallet.node.ledger.store.latest_end ()); i != j; ++i)
 	{
 		QList<QStandardItem *> items;
@@ -2220,29 +2235,29 @@ wallet (wallet_a)
 	layout->addWidget (create);
 	layout->addWidget (back);
 	window->setLayout (layout);
-	QObject::connect (send, &QRadioButton::toggled, [this]() {
-		if (send->isChecked ())
+	QObject::connect (send, &QRadioButton::toggled, [this](bool on) {
+		if (on)
 		{
 			deactivate_all ();
 			activate_send ();
 		}
 	});
-	QObject::connect (receive, &QRadioButton::toggled, [this]() {
-		if (receive->isChecked ())
+	QObject::connect (receive, &QRadioButton::toggled, [this](bool on) {
+		if (on)
 		{
 			deactivate_all ();
 			activate_receive ();
 		}
 	});
-	QObject::connect (open, &QRadioButton::toggled, [this]() {
-		if (open->isChecked ())
+	QObject::connect (open, &QRadioButton::toggled, [this](bool on) {
+		if (on)
 		{
 			deactivate_all ();
 			activate_open ();
 		}
 	});
-	QObject::connect (change, &QRadioButton::toggled, [this]() {
-		if (change->isChecked ())
+	QObject::connect (change, &QRadioButton::toggled, [this](bool on) {
+		if (on)
 		{
 			deactivate_all ();
 			activate_change ();
@@ -2360,7 +2375,7 @@ void chratos_qt::block_creation::create_send ()
 			error = destination_l.decode_account (destination->text ().toStdString ());
 			if (!error)
 			{
-				chratos::transaction transaction (wallet.node.store.environment, nullptr, false);
+				auto transaction (wallet.node.store.tx_begin_read ());
 				chratos::raw_key key;
 				if (!wallet.wallet_m->store.fetch (transaction, account_l, key))
 				{
@@ -2370,7 +2385,7 @@ void chratos_qt::block_creation::create_send ()
 						chratos::account_info info;
 						auto error (wallet.node.store.account_get (transaction, account_l, info));
 						assert (!error);
-            auto dividend (wallet.node.store.dividend_get (transaction));
+						auto dividend (wallet.node.store.dividend_get (transaction));
 						auto rep_block (wallet.node.store.block_get (transaction, info.rep_block));
 						assert (rep_block != nullptr);
 						chratos::state_block send (account_l, info.head, rep_block->representative (), balance - amount_l.number (), destination_l, info.dividend_block, key, account_l, 0);
@@ -2418,7 +2433,7 @@ void chratos_qt::block_creation::create_receive ()
 	auto error (source_l.decode_hex (source->text ().toStdString ()));
 	if (!error)
 	{
-		chratos::transaction transaction (wallet.node.store.environment, nullptr, false);
+		auto transaction (wallet.node.store.tx_begin_read ());
 		auto block_l (wallet.node.store.block_get (transaction, source_l));
 		if (block_l != nullptr)
 		{
@@ -2494,7 +2509,7 @@ void chratos_qt::block_creation::create_change ()
 		error = representative_l.decode_account (representative->text ().toStdString ());
 		if (!error)
 		{
-			chratos::transaction transaction (wallet.node.store.environment, nullptr, false);
+			auto transaction (wallet.node.store.tx_begin_read ());
 			chratos::account_info info;
 			auto error (wallet.node.store.account_get (transaction, account_l, info));
 			if (!error)
@@ -2546,7 +2561,7 @@ void chratos_qt::block_creation::create_open ()
 		error = representative_l.decode_account (representative->text ().toStdString ());
 		if (!error)
 		{
-			chratos::transaction transaction (wallet.node.store.environment, nullptr, false);
+			auto transaction (wallet.node.store.tx_begin_read ());
 			auto block_l (wallet.node.store.block_get (transaction, source_l));
 			if (block_l != nullptr)
 			{

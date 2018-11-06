@@ -125,7 +125,7 @@ char * chr_work_transaction (const char * transaction)
 		auto block (chratos::deserialize_block_json (block_l));
 		if (block != nullptr)
 		{
-			chratos::work_pool pool (std::thread::hardware_concurrency ());
+			chratos::work_pool pool (boost::thread::hardware_concurrency ());
 			auto work (pool.generate (block->root ()));
 			block->block_work_set (work);
 			auto json (block->to_json ());

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <boost/thread/thread.hpp>
 #include <chratos/node/common.hpp>
+#include <chratos/node/lmdb.hpp>
 #include <chratos/node/openclwork.hpp>
 #include <chratos/secure/blockstore.hpp>
 #include <chratos/secure/common.hpp>
@@ -25,16 +27,6 @@ private:
 	std::mutex mutex;
 	void value_get (chratos::raw_key &);
 };
-class wallet_value
-{
-public:
-	wallet_value () = default;
-	wallet_value (chratos::mdb_val const &);
-	wallet_value (chratos::uint256_union const &, uint64_t);
-	chratos::mdb_val val () const;
-	chratos::private_key key;
-	uint64_t work;
-};
 class node_config;
 class kdf
 {
@@ -45,11 +37,11 @@ public:
 class dividend_claim_result
 {
 public:
-  dividend_claim_result () = default;
-  dividend_claim_result (chratos::account const &, chratos::block_hash const &, chratos::block_hash const &);
-  chratos::account account;
-  chratos::block_hash dividend;
-  chratos::block_hash claim;
+	dividend_claim_result () = default;
+	dividend_claim_result (chratos::account const &, chratos::block_hash const &, chratos::block_hash const &);
+	chratos::account account;
+	chratos::block_hash dividend;
+	chratos::block_hash claim;
 };
 enum class key_type
 {
@@ -63,49 +55,49 @@ class wallet_store
 public:
 	wallet_store (bool &, chratos::kdf &, chratos::transaction &, chratos::account, unsigned, std::string const &);
 	wallet_store (bool &, chratos::kdf &, chratos::transaction &, chratos::account, unsigned, std::string const &, std::string const &);
-	std::vector<chratos::account> accounts (MDB_txn *);
-	void initialize (MDB_txn *, bool &, std::string const &);
-	chratos::uint256_union check (MDB_txn *);
-	bool rekey (MDB_txn *, std::string const &);
-	bool valid_password (MDB_txn *);
-	bool attempt_password (MDB_txn *, std::string const &);
-	void wallet_key (chratos::raw_key &, MDB_txn *);
-	void seed (chratos::raw_key &, MDB_txn *);
-	void seed_set (MDB_txn *, chratos::raw_key const &);
+	std::vector<chratos::account> accounts (chratos::transaction const &);
+	void initialize (chratos::transaction const &, bool &, std::string const &);
+	chratos::uint256_union check (chratos::transaction const &);
+	bool rekey (chratos::transaction const &, std::string const &);
+	bool valid_password (chratos::transaction const &);
+	bool attempt_password (chratos::transaction const &, std::string const &);
+	void wallet_key (chratos::raw_key &, chratos::transaction const &);
+	void seed (chratos::raw_key &, chratos::transaction const &);
+	void seed_set (chratos::transaction const &, chratos::raw_key const &);
 	chratos::key_type key_type (chratos::wallet_value const &);
-	chratos::public_key deterministic_insert (MDB_txn *);
-	void deterministic_key (chratos::raw_key &, MDB_txn *, uint32_t);
-	uint32_t deterministic_index_get (MDB_txn *);
-	void deterministic_index_set (MDB_txn *, uint32_t);
-	void deterministic_clear (MDB_txn *);
-	chratos::uint256_union salt (MDB_txn *);
-	bool is_representative (MDB_txn *);
-	chratos::account representative (MDB_txn *);
-	void representative_set (MDB_txn *, chratos::account const &);
-	chratos::public_key insert_adhoc (MDB_txn *, chratos::raw_key const &);
-	void insert_watch (MDB_txn *, chratos::public_key const &);
-	void erase (MDB_txn *, chratos::public_key const &);
-	chratos::wallet_value entry_get_raw (MDB_txn *, chratos::public_key const &);
-	void entry_put_raw (MDB_txn *, chratos::public_key const &, chratos::wallet_value const &);
-	bool fetch (MDB_txn *, chratos::public_key const &, chratos::raw_key &);
-	bool exists (MDB_txn *, chratos::public_key const &);
-	void destroy (MDB_txn *);
-	chratos::store_iterator<chratos::uint256_union, chratos::wallet_value> find (MDB_txn *, chratos::uint256_union const &);
-	chratos::store_iterator<chratos::uint256_union, chratos::wallet_value> begin (MDB_txn *, chratos::uint256_union const &);
-	chratos::store_iterator<chratos::uint256_union, chratos::wallet_value> begin (MDB_txn *);
+	chratos::public_key deterministic_insert (chratos::transaction const &);
+	void deterministic_key (chratos::raw_key &, chratos::transaction const &, uint32_t);
+	uint32_t deterministic_index_get (chratos::transaction const &);
+	void deterministic_index_set (chratos::transaction const &, uint32_t);
+	void deterministic_clear (chratos::transaction const &);
+	chratos::uint256_union salt (chratos::transaction const &);
+	bool is_representative (chratos::transaction const &);
+	chratos::account representative (chratos::transaction const &);
+	void representative_set (chratos::transaction const &, chratos::account const &);
+	chratos::public_key insert_adhoc (chratos::transaction const &, chratos::raw_key const &);
+	void insert_watch (chratos::transaction const &, chratos::public_key const &);
+	void erase (chratos::transaction const &, chratos::public_key const &);
+	chratos::wallet_value entry_get_raw (chratos::transaction const &, chratos::public_key const &);
+	void entry_put_raw (chratos::transaction const &, chratos::public_key const &, chratos::wallet_value const &);
+	bool fetch (chratos::transaction const &, chratos::public_key const &, chratos::raw_key &);
+	bool exists (chratos::transaction const &, chratos::public_key const &);
+	void destroy (chratos::transaction const &);
+	chratos::store_iterator<chratos::uint256_union, chratos::wallet_value> find (chratos::transaction const &, chratos::uint256_union const &);
+	chratos::store_iterator<chratos::uint256_union, chratos::wallet_value> begin (chratos::transaction const &, chratos::uint256_union const &);
+	chratos::store_iterator<chratos::uint256_union, chratos::wallet_value> begin (chratos::transaction const &);
 	chratos::store_iterator<chratos::uint256_union, chratos::wallet_value> end ();
-	void derive_key (chratos::raw_key &, MDB_txn *, std::string const &);
-	void serialize_json (MDB_txn *, std::string &);
-	void write_backup (MDB_txn *, boost::filesystem::path const &);
-	bool move (MDB_txn *, chratos::wallet_store &, std::vector<chratos::public_key> const &);
-	bool import (MDB_txn *, chratos::wallet_store &);
-	bool work_get (MDB_txn *, chratos::public_key const &, uint64_t &);
-	void work_put (MDB_txn *, chratos::public_key const &, uint64_t);
-	unsigned version (MDB_txn *);
-	void version_put (MDB_txn *, unsigned);
-	void upgrade_v1_v2 ();
-	void upgrade_v2_v3 ();
-	void upgrade_v3_v4 ();
+	void derive_key (chratos::raw_key &, chratos::transaction const &, std::string const &);
+	void serialize_json (chratos::transaction const &, std::string &);
+	void write_backup (chratos::transaction const &, boost::filesystem::path const &);
+	bool move (chratos::transaction const &, chratos::wallet_store &, std::vector<chratos::public_key> const &);
+	bool import (chratos::transaction const &, chratos::wallet_store &);
+	bool work_get (chratos::transaction const &, chratos::public_key const &, uint64_t &);
+	void work_put (chratos::transaction const &, chratos::public_key const &, uint64_t);
+	unsigned version (chratos::transaction const &);
+	void version_put (chratos::transaction const &, unsigned);
+	void upgrade_v1_v2 (chratos::transaction const &);
+	void upgrade_v2_v3 (chratos::transaction const &);
+	void upgrade_v3_v4 (chratos::transaction const &);
 	chratos::fan password;
 	chratos::fan wallet_key_mem;
 	static unsigned const version_1 = 1;
@@ -127,11 +119,13 @@ public:
 	static unsigned const kdf_test_work = 8;
 	static unsigned const kdf_work = chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? kdf_test_work : kdf_full_work;
 	chratos::kdf & kdf;
-	chratos::mdb_env & environment;
 	MDB_dbi handle;
 	std::recursive_mutex mutex;
+
+private:
+	MDB_txn * tx (chratos::transaction const &) const;
 };
-class node;
+class wallets;
 // A wallet is a set of account keys encrypted by a common encryption key
 class wallet : public std::enable_shared_from_this<chratos::wallet>
 {
@@ -139,17 +133,16 @@ public:
 	std::shared_ptr<chratos::block> change_action (chratos::account const &, chratos::account const &, bool = true);
 	std::shared_ptr<chratos::block> receive_action (chratos::block const &, chratos::account const &, chratos::uint128_union const &, bool = true, bool = false);
 	std::shared_ptr<chratos::block> send_action (chratos::account const &, chratos::account const &, chratos::uint128_t const &, bool = true, boost::optional<std::string> = {});
-  std::shared_ptr<chratos::block> pay_dividend_action (chratos::account const &, chratos::uint128_t const &, bool = true, boost::optional<std::string> = {});
-  std::shared_ptr<chratos::block> claim_dividend_action (chratos::block const &, chratos::account const &, chratos::account const &, bool = true);
-	wallet (bool &, chratos::transaction &, chratos::node &, std::string const &);
-	wallet (bool &, chratos::transaction &, chratos::node &, std::string const &, std::string const &);
+	std::shared_ptr<chratos::block> pay_dividend_action (chratos::account const &, chratos::uint128_t const &, bool = true, boost::optional<std::string> = {});
+	std::shared_ptr<chratos::block> claim_dividend_action (chratos::block const &, chratos::account const &, chratos::account const &, bool = true);
+	wallet (bool &, chratos::transaction &, chratos::wallets &, std::string const &);
+	wallet (bool &, chratos::transaction &, chratos::wallets &, std::string const &, std::string const &);
 	void enter_initial_password ();
-	bool valid_password ();
-	bool enter_password (std::string const &);
+	bool enter_password (chratos::transaction const &, std::string const &);
 	chratos::public_key insert_adhoc (chratos::raw_key const &, bool = true);
-	chratos::public_key insert_adhoc (MDB_txn *, chratos::raw_key const &, bool = true);
-	void insert_watch (MDB_txn *, chratos::public_key const &);
-	chratos::public_key deterministic_insert (MDB_txn *, bool = true);
+	chratos::public_key insert_adhoc (chratos::transaction const &, chratos::raw_key const &, bool = true);
+	void insert_watch (chratos::transaction const &, chratos::public_key const &);
+	chratos::public_key deterministic_insert (chratos::transaction const &, bool = true);
 	chratos::public_key deterministic_insert (bool = true);
 	bool exists (chratos::public_key const &);
 	bool import (std::string const &, std::string const &);
@@ -161,30 +154,36 @@ public:
 	chratos::block_hash send_sync (chratos::account const &, chratos::account const &, chratos::uint128_t const &);
 	void send_async (chratos::account const &, chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true, boost::optional<std::string> = {});
 	chratos::block_hash send_dividend_sync (chratos::account const &, chratos::uint128_t const &);
-  void send_dividend_async (chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true, boost::optional<std::string> = {});
-  chratos::block_hash claim_dividend_sync (std::shared_ptr<chratos::block>, chratos::account const &, chratos::account const &);
-  void claim_dividend_async (std::shared_ptr<chratos::block>, chratos::account const &, chratos::account const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true);
+	void send_dividend_async (chratos::account const &, chratos::uint128_t const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true, boost::optional<std::string> = {});
+	chratos::block_hash claim_dividend_sync (std::shared_ptr<chratos::block>, chratos::account const &, chratos::account const &);
+	void claim_dividend_async (std::shared_ptr<chratos::block>, chratos::account const &, chratos::account const &, std::function<void(std::shared_ptr<chratos::block>)> const &, bool = true);
 	void work_apply (chratos::account const &, std::function<void(uint64_t)>);
 	void work_cache_blocking (chratos::account const &, chratos::block_hash const &);
-	void work_update (MDB_txn *, chratos::account const &, chratos::block_hash const &, uint64_t);
+	void work_update (chratos::transaction const &, chratos::account const &, chratos::block_hash const &, uint64_t);
 	void work_ensure (chratos::account const &, chratos::block_hash const &);
 	bool search_pending ();
-  std::vector<chratos::dividend_claim_result> claim_dividends ();
-  std::vector<chratos::block_hash> unclaimed_for_account (chratos::account const &);
-  std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
-  chratos::amount amount_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
-  bool has_outstanding_pendings_for_dividend (MDB_txn *, std::shared_ptr<chratos::block>, chratos::account const &);
-  void receive_outstanding_pendings_sync (MDB_txn *, chratos::account const &, chratos::block_hash const &);
-  void receive_outstanding_pendings_async (MDB_txn *, chratos::account const &, chratos::block_hash const &, std::function<void()> const &, bool = true);
-	void init_free_accounts (MDB_txn *);
+	std::vector<chratos::dividend_claim_result> claim_dividends ();
+	std::vector<chratos::block_hash> unclaimed_for_account (chratos::account const &);
+	std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
+	chratos::amount amount_for_dividend (chratos::transaction const &, std::shared_ptr<chratos::block>, chratos::account const &);
+	bool has_outstanding_pendings_for_dividend (chratos::transaction const &, std::shared_ptr<chratos::block>, chratos::account const &);
+	void receive_outstanding_pendings_sync (chratos::transaction const &, chratos::account const &, chratos::block_hash const &);
+  void receive_outstanding_pendings_async (chratos::transaction const &, chratos::account const &, chratos::block_hash const &, std::function<void()> const &, bool = true);
+	void init_free_accounts (chratos::transaction const &);
 	/** Changes the wallet seed and returns the first account */
-	chratos::public_key change_seed (MDB_txn * transaction_a, chratos::raw_key const & prv_a);
+	chratos::public_key change_seed (chratos::transaction const & transaction_a, chratos::raw_key const & prv_a);
+	bool live ();
 	std::unordered_set<chratos::account> free_accounts;
 	std::function<void(bool, bool)> lock_observer;
 	chratos::wallet_store store;
-	chratos::node & node;
+	chratos::wallets & wallets;
 };
-// The wallets set is all the wallets a node controls.  A node may contain multiple wallets independently encrypted and operated.
+class node;
+
+/**
+ * The wallets set is all the wallets a node controls.
+ * A node may contain multiple wallets independently encrypted and operated.
+ */
 class wallets
 {
 public:
@@ -194,27 +193,41 @@ public:
 	std::shared_ptr<chratos::wallet> create (chratos::uint256_union const &);
 	bool search_pending (chratos::uint256_union const &);
 	void search_pending_all ();
-  std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
-  std::unordered_map<chratos::block_hash, std::vector<chratos::account>> search_unclaimed_all ();
+	std::vector<chratos::account> search_unclaimed (chratos::block_hash const &);
+	std::unordered_map<chratos::block_hash, std::vector<chratos::account>> search_unclaimed_all ();
 	void destroy (chratos::uint256_union const &);
 	void do_wallet_actions ();
-	void queue_wallet_action (chratos::uint128_t const &, std::function<void()> const &);
-	void foreach_representative (MDB_txn *, std::function<void(chratos::public_key const &, chratos::raw_key const &)> const &);
-	bool exists (MDB_txn *, chratos::public_key const &);
+	void queue_wallet_action (chratos::uint128_t const &, std::shared_ptr<chratos::wallet>, std::function<void(chratos::wallet &)> const &);
+	void foreach_representative (chratos::transaction const &, std::function<void(chratos::public_key const &, chratos::raw_key const &)> const &);
+	bool exists (chratos::transaction const &, chratos::public_key const &);
 	void stop ();
+	void clear_send_ids (chratos::transaction const &);
 	std::function<void(bool)> observer;
 	std::unordered_map<chratos::uint256_union, std::shared_ptr<chratos::wallet>> items;
-	std::multimap<chratos::uint128_t, std::function<void()>, std::greater<chratos::uint128_t>> actions;
+	std::multimap<chratos::uint128_t, std::pair<std::shared_ptr<chratos::wallet>, std::function<void(chratos::wallet &)>>, std::greater<chratos::uint128_t>> actions;
 	std::mutex mutex;
 	std::condition_variable condition;
 	chratos::kdf kdf;
 	MDB_dbi handle;
 	MDB_dbi send_action_ids;
-  MDB_dbi pay_dividend_action_ids;
+	MDB_dbi pay_dividend_action_ids;
 	chratos::node & node;
+	chratos::mdb_env & env;
 	bool stopped;
-	std::thread thread;
+	boost::thread thread;
 	static chratos::uint128_t const generate_priority;
 	static chratos::uint128_t const high_priority;
+
+	/** Start read-write transaction */
+	chratos::transaction tx_begin_write ();
+
+	/** Start read-only transaction */
+	chratos::transaction tx_begin_read ();
+
+	/**
+	 * Start a read-only or read-write transaction
+	 * @param write If true, start a read-write transaction
+	 */
+	chratos::transaction tx_begin (bool write = false);
 };
 }

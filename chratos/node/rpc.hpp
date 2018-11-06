@@ -66,6 +66,7 @@ class rpc
 {
 public:
 	rpc (boost::asio::io_service &, chratos::node &, chratos::rpc_config const &);
+	virtual ~rpc () = default;
 	void start ();
 	virtual void accept ();
 	void stop ();
@@ -82,6 +83,7 @@ class rpc_connection : public std::enable_shared_from_this<chratos::rpc_connecti
 {
 public:
 	rpc_connection (chratos::node &, chratos::rpc &);
+	virtual ~rpc_connection () = default;
 	virtual void parse_connection ();
 	virtual void read ();
 	virtual void write_result (std::string body, unsigned version);
@@ -117,9 +119,9 @@ public:
 	void process_request ();
 	void account_balance ();
 	void account_block_count ();
-  void account_claim_amount ();
-  void account_claim_dividend ();
-  void account_claim_all_dividends ();
+	void account_claim_amount ();
+	void account_claim_dividend ();
+	void account_claim_all_dividends ();
 	void account_count ();
 	void account_create ();
 	void account_get ();
@@ -148,17 +150,20 @@ public:
 	void block_hash ();
 	void bootstrap ();
 	void bootstrap_any ();
-  void burn_account_balance ();
+	void burn_account_balance ();
 	void chain (bool = false);
-  void claimed_dividends ();
-  void claim_dividends ();
+	void claimed_dividends ();
+	void claim_dividends ();
+	void confirmation_active ();
 	void confirmation_history ();
+	void confirmation_info ();
+	void confirmation_quorum ();
 	void delegators ();
 	void delegators_count ();
 	void deterministic_key ();
-  void dividend_info ();
-  void dividends ();
-  void dividend_claim_ratio ();
+	void dividend_info ();
+	void dividends ();
+	void dividend_claim_ratio ();
 	void frontiers ();
 	void history ();
 	void keepalive ();
@@ -167,10 +172,12 @@ public:
 	void ledger ();
 	void mchr_to_raw (chratos::uint128_t = chratos::Mchr_ratio);
 	void mchr_from_raw (chratos::uint128_t = chratos::Mchr_ratio);
+	void node_id ();
+	void node_id_delete ();
 	void password_change ();
 	void password_enter ();
 	void password_valid (bool = false);
-  void pay_dividend ();
+	void pay_dividend ();
 	void payment_begin ();
 	void payment_init ();
 	void payment_end ();
@@ -187,7 +194,7 @@ public:
 	void republish ();
 	void search_pending ();
 	void search_pending_all ();
-  void search_unclaimed_all ();
+	void search_unclaimed_all ();
 	void send ();
 	void stats ();
 	void stop ();
@@ -195,14 +202,14 @@ public:
 	void unchecked_clear ();
 	void unchecked_get ();
 	void unchecked_keys ();
-  void unclaimed_dividends ();
+	void unclaimed_dividends ();
 	void validate_account_number ();
 	void version ();
 	void wallet_add ();
 	void wallet_add_watch ();
 	void wallet_balances ();
 	void wallet_change_seed ();
-  void wallet_claimed_dividends ();
+	void wallet_claimed_dividends ();
 	void wallet_contains ();
 	void wallet_create ();
 	void wallet_destroy ();

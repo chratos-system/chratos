@@ -25,6 +25,10 @@ union uint128_union
 {
 public:
 	uint128_union () = default;
+	/**
+	 * Decode from hex string
+	 * @warning Aborts at runtime if the input is invalid
+	 */
 	uint128_union (std::string const &);
 	uint128_union (uint64_t);
 	uint128_union (chratos::uint128_union const &) = default;
@@ -55,6 +59,10 @@ class raw_key;
 union uint256_union
 {
 	uint256_union () = default;
+	/**
+	 * Decode from hex string
+	 * @warning Aborts at runtime if the input is invalid
+	 */
 	uint256_union (std::string const &);
 	uint256_union (uint64_t);
 	uint256_union (chratos::uint256_t const &);
@@ -120,6 +128,7 @@ using signature = uint512_union;
 
 chratos::uint512_union sign_message (chratos::raw_key const &, chratos::public_key const &, chratos::uint256_union const &);
 bool validate_message (chratos::public_key const &, chratos::uint256_union const &, chratos::uint512_union const &);
+bool validate_message_batch (const unsigned char **, size_t *, const unsigned char **, const unsigned char **, size_t, int *);
 void deterministic_key (chratos::uint256_union const &, uint32_t, chratos::uint256_union &);
 chratos::public_key pub_key (chratos::private_key const &);
 }

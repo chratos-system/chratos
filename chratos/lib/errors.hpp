@@ -74,8 +74,8 @@ enum class error_rpc
 	bad_previous,
 	bad_representative_number,
 	bad_source,
-  bad_dividend,
-  bad_dividend_order,
+	bad_dividend,
+	bad_dividend_order,
 	bad_timeout,
 	block_create_balance_mismatch,
 	block_create_key_required,
@@ -85,10 +85,12 @@ enum class error_rpc
 	block_create_requirements_receive,
 	block_create_requirements_change,
 	block_create_requirements_send,
+	confirmation_not_found,
 	invalid_balance,
 	invalid_destinations,
 	invalid_offset,
 	invalid_missing_type,
+	invalid_root,
 	invalid_sources,
 	payment_account_balance,
 	payment_unable_create_account,
@@ -110,10 +112,10 @@ enum class error_process
 	opened_burn_account, // The impossible happened, someone found the private key associated with the public key '0'.
 	balance_mismatch, // Balance and amount delta don't match
 	block_position, // This block cannot follow the previous block
-  dividend_too_small, // The amount being sent as a dividend is too small
-  dividend_fork, // Malicious or timed fork based on previous dividend
-  invalid_dividend_account, // Malicious spend from an unauthorized account
-  outstanding_pendings,
+	dividend_too_small, // The amount being sent as a dividend is too small
+	dividend_fork, // Malicious or timed fork based on previous dividend
+	invalid_dividend_account, // Malicious spend from an unauthorized account
+	outstanding_pendings,
 	other
 };
 }

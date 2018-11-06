@@ -28,10 +28,16 @@
 *.dmg
 *.DS_Store
 core_test
+!chratos/core_test/
+!rai/core_test/
 qt_test
+!chratos/qt_test/
+!rai/qt_test/
 rai_node
 rai_wallet
 slow_test
+!chratos/slow_test
+!rai/slow_test
 
 # IDEs
 .idea

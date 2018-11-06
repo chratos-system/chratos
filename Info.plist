@@ -15,8 +15,8 @@
 	<key>CFBundleIconFile</key>
 	<string>Chratos.icns</string>
 	<key>CFBundleIdentifier</key>
-  <string>io.chratos.chratos_wallet</string>
-  <key>NSRequiresAquaSystemAppearance</key>
-  <true/>
+	<string>io.chratos.chratos_wallet</string>
+	<key>NSRequiresAquaSystemAppearance</key>
+	<true/>
 </dict>
 </plist>

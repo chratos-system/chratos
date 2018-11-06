@@ -1,8 +1,8 @@
 #pragma once
 
-#include <chrono>
 #include <chratos/lib/errors.hpp>
 #include <chratos/node/node.hpp>
+#include <chrono>
 
 namespace chratos
 {
@@ -22,7 +22,7 @@ public:
 	void generate_usage_traffic (uint32_t, uint32_t, size_t);
 	void generate_usage_traffic (uint32_t, uint32_t);
 	chratos::account get_random_account (std::vector<chratos::account> &);
-	chratos::uint128_t get_random_amount (MDB_txn *, chratos::node &, chratos::account const &);
+	chratos::uint128_t get_random_amount (chratos::transaction const &, chratos::node &, chratos::account const &);
 	void generate_rollback (chratos::node &, std::vector<chratos::account> &);
 	void generate_change_known (chratos::node &, std::vector<chratos::account> &);
 	void generate_change_unknown (chratos::node &, std::vector<chratos::account> &);
@@ -30,7 +30,7 @@ public:
 	void generate_send_new (chratos::node &, std::vector<chratos::account> &);
 	void generate_send_existing (chratos::node &, std::vector<chratos::account> &);
 	std::shared_ptr<chratos::wallet> wallet (size_t);
-	chratos::account account (MDB_txn *, size_t);
+	chratos::account account (chratos::transaction const &, size_t);
 	/**
 	 * Polls, sleep if there's no work to be done (default 50ms), then check the deadline
 	 * @returns 0 or chratos::deadline_expired
@@ -43,8 +43,8 @@ public:
 	std::vector<std::shared_ptr<chratos::node>> nodes;
 	chratos::logging logging;
 	chratos::work_pool work;
-	std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> deadline{ std::chrono::steady_clock::time_point::max () };
-	double deadline_scaling_factor{ 1.0 };
+	std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<double>> deadline { std::chrono::steady_clock::time_point::max () };
+	double deadline_scaling_factor { 1.0 };
 };
 class landing_store
 {

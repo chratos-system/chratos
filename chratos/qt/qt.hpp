@@ -11,6 +11,7 @@
 
 namespace chratos_qt
 {
+static const QString saved_ratio_key = "settings/ratio";
 class wallet;
 class eventloop_processor : public QObject
 {
@@ -55,7 +56,7 @@ public:
 	QPushButton * show_ledger;
 	QPushButton * show_peers;
 	QPushButton * search_for_receivables;
-  QPushButton * claim_dividends;
+	QPushButton * claim_dividends;
 	QPushButton * bootstrap;
 	QPushButton * wallet_refresh;
 	QPushButton * create_block;
@@ -67,9 +68,9 @@ public:
 	QHBoxLayout * scale_layout;
 	QLabel * scale_label;
 	QButtonGroup * ratio_group;
-	QRadioButton * mchratos;
-	QRadioButton * kchratos;
-	QRadioButton * chratos;
+	QRadioButton * mchratos_unit;
+	QRadioButton * kchratos_unit;
+	QRadioButton * chratos_unit;
 	QPushButton * back;
 
 	QWidget * ledger_window;

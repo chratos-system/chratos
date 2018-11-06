@@ -1,7 +1,8 @@
+#include <chratos/chratos_node/daemon.hpp>
+#include <chratos/lib/utility.hpp>
 #include <chratos/node/cli.hpp>
 #include <chratos/node/node.hpp>
 #include <chratos/node/testing.hpp>
-#include <chratos/chratos_node/daemon.hpp>
 
 #include <argon2.h>
 
@@ -10,6 +11,8 @@
 
 int main (int argc, char * const * argv)
 {
+	chratos::set_umask ();
+
 	boost::program_options::options_description description ("Command line options");
 	chratos::add_node_options (description);
 
@@ -28,7 +31,10 @@ int main (int argc, char * const * argv)
 		("debug_profile_verify", "Profile work verification")
 		("debug_profile_kdf", "Profile kdf function")
 		("debug_verify_profile", "Profile signature verification")
+		("debug_verify_profile_batch", "Profile batch signature verification")
 		("debug_profile_sign", "Profile signature generation")
+		("debug_profile_process", "Profile active blocks processing (only for chratos_test_network)")
+		("debug_validate_blocks", "Check all blocks for correct hash, signature, work value")
 		("platform", boost::program_options::value<std::string> (), "Defines the <platform> for OpenCL commands")
 		("device", boost::program_options::value<std::string> (), "Defines <device> for OpenCL command")
 		("threads", boost::program_options::value<std::string> (), "Defines <threads> count for OpenCL command");
@@ -59,7 +65,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_block_count"))
 		{
 			chratos::inactive_node node (data_path);
-			chratos::transaction transaction (node.node->store.environment, nullptr, false);
+			auto transaction (node.node->store.tx_begin ());
 			std::cout << boost::str (boost::format ("Block count: %1%\n") % node.node->store.block_count (transaction).sum ());
 		}
 		else if (vm.count ("debug_bootstrap_generate"))
@@ -86,7 +92,7 @@ int main (int argc, char * const * argv)
 						          << "Account: " << rep.pub.to_account () << std::endl;
 					}
 					chratos::uint128_t balance (std::numeric_limits<chratos::uint128_t>::max ());
-          chratos::block_hash dividend (0);
+					chratos::block_hash dividend (0);
 					chratos::state_block genesis_block (genesis.pub, 0, genesis.pub, balance, genesis.pub, dividend, genesis.prv, genesis.pub, work.generate (genesis.pub));
 					std::cout << genesis_block.to_json ();
 					chratos::block_hash previous (genesis_block.hash ());
@@ -120,7 +126,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_dump_representatives"))
 		{
 			chratos::inactive_node node (data_path);
-			chratos::transaction transaction (node.node->store.environment, nullptr, false);
+			auto transaction (node.node->store.tx_begin ());
 			chratos::uint128_t total;
 			for (auto i (node.node->store.representation_begin (transaction)), n (node.node->store.representation_end ()); i != n; ++i)
 			{
@@ -147,7 +153,7 @@ int main (int argc, char * const * argv)
 		else if (vm.count ("debug_account_count"))
 		{
 			chratos::inactive_node node (data_path);
-			chratos::transaction transaction (node.node->store.environment, nullptr, false);
+			auto transaction (node.node->store.tx_begin ());
 			std::cout << boost::str (boost::format ("Frontier count: %1%\n") % node.node->store.account_count (transaction));
 		}
 		else if (vm.count ("debug_mass_activity"))
@@ -165,6 +171,7 @@ int main (int argc, char * const * argv)
 			{
 				auto begin1 (std::chrono::high_resolution_clock::now ());
 				auto success (argon2_hash (1, chratos::wallet_store::kdf_work, 1, password.data (), password.size (), salt.bytes.data (), salt.bytes.size (), result.bytes.data (), result.bytes.size (), NULL, 0, Argon2_d, 0x10));
+				(void)success;
 				auto end1 (std::chrono::high_resolution_clock::now ());
 				std::cerr << boost::str (boost::format ("Derivation time: %1%us\n") % std::chrono::duration_cast<std::chrono::microseconds> (end1 - begin1).count ());
 			}
@@ -241,7 +248,7 @@ int main (int argc, char * const * argv)
 							chratos::work_pool work_pool (std::numeric_limits<unsigned>::max (), opencl ? [&opencl](chratos::uint256_union const & root_a) {
 								return opencl->generate_work (root_a);
 							}
-							                                                                        : std::function<boost::optional<uint64_t> (chratos::uint256_union const &)> (nullptr));
+							                                                                            : std::function<boost::optional<uint64_t> (chratos::uint256_union const &)> (nullptr));
 							chratos::state_block block (0, 0, 0, 0, 0, 0, chratos::keypair ().prv, 0, 0);
 							std::cerr << boost::str (boost::format ("Starting OpenCL generation profiling. Platform: %1%. Device: %2%. Threads: %3%\n") % platform % device % threads);
 							for (uint64_t i (0); true; ++i)
@@ -307,6 +314,23 @@ int main (int argc, char * const * argv)
 			auto end (std::chrono::high_resolution_clock::now ());
 			std::cerr << "Signature verifications " << std::chrono::duration_cast<std::chrono::microseconds> (end - begin).count () << std::endl;
 		}
+		else if (vm.count ("debug_verify_profile_batch"))
+		{
+			chratos::keypair key;
+			size_t batch_count (1000);
+			chratos::uint256_union message;
+			chratos::uint512_union signature (chratos::sign_message (key.prv, key.pub, message));
+			std::vector<unsigned char const *> messages (batch_count, message.bytes.data ());
+			std::vector<size_t> lengths (batch_count, sizeof (message));
+			std::vector<unsigned char const *> pub_keys (batch_count, key.pub.bytes.data ());
+			std::vector<unsigned char const *> signatures (batch_count, signature.bytes.data ());
+			std::vector<int> verifications;
+			verifications.resize (batch_count);
+			auto begin (std::chrono::high_resolution_clock::now ());
+			chratos::validate_message_batch (messages.data (), lengths.data (), pub_keys.data (), signatures.data (), batch_count, verifications.data ());
+			auto end (std::chrono::high_resolution_clock::now ());
+			std::cerr << "Batch signature verifications " << std::chrono::duration_cast<std::chrono::microseconds> (end - begin).count () << std::endl;
+		}
 		else if (vm.count ("debug_profile_sign"))
 		{
 			std::cerr << "Starting blocks signing profiling\n";
@@ -314,7 +338,7 @@ int main (int argc, char * const * argv)
 			{
 				chratos::keypair key;
 				chratos::block_hash latest (0);
-        chratos::block_hash dividend (0);
+				chratos::block_hash dividend (0);
 				auto begin1 (std::chrono::high_resolution_clock::now ());
 				for (uint64_t balance (0); balance < 1000; ++balance)
 				{
@@ -324,6 +348,203 @@ int main (int argc, char * const * argv)
 				auto end1 (std::chrono::high_resolution_clock::now ());
 				std::cerr << boost::str (boost::format ("%|1$ 12d|\n") % std::chrono::duration_cast<std::chrono::microseconds> (end1 - begin1).count ());
 			}
+		}
+		else if (vm.count ("debug_profile_process"))
+		{
+			if (chratos::chratos_network == chratos::chratos_networks::chratos_test_network)
+			{
+				size_t num_accounts (100000);
+				size_t num_interations (5); // 100,000 * 5 * 2 = 1,000,000 blocks
+				size_t max_blocks (2 * num_accounts * num_interations + num_accounts * 2); //  1,000,000 + 2* 100,000 = 1,200,000 blocks
+				std::cerr << boost::str (boost::format ("Starting pregenerating %1% blocks\n") % max_blocks);
+				chratos::system system (24000, 1);
+				chratos::node_init init;
+				chratos::work_pool work (std::numeric_limits<unsigned>::max (), nullptr);
+				chratos::logging logging;
+				auto path (chratos::unique_path ());
+				logging.init (path);
+				auto node (std::make_shared<chratos::node> (init, system.service, 24001, path, system.alarm, logging, work));
+				chratos::block_hash genesis_latest (node->latest (chratos::test_genesis_key.pub));
+				chratos::uint128_t genesis_balance (std::numeric_limits<chratos::uint128_t>::max ());
+				// Generating keys
+				std::vector<chratos::keypair> keys (num_accounts);
+				std::vector<chratos::block_hash> frontiers (num_accounts);
+				std::vector<chratos::uint128_t> balances (num_accounts, 1000000000);
+				// Generating blocks
+				std::deque<std::shared_ptr<chratos::block>> blocks;
+				for (auto i (0); i != num_accounts; ++i)
+				{
+					genesis_balance = genesis_balance - 1000000000;
+					auto send (std::make_shared<chratos::state_block> (chratos::test_genesis_key.pub, genesis_latest, chratos::test_genesis_key.pub, genesis_balance, keys[i].pub, 0, chratos::test_genesis_key.prv, chratos::test_genesis_key.pub, work.generate (genesis_latest)));
+					genesis_latest = send->hash ();
+					blocks.push_back (std::move (send));
+					auto open (std::make_shared<chratos::state_block> (keys[i].pub, 0, keys[i].pub, balances[i], genesis_latest, 0, keys[i].prv, keys[i].pub, work.generate (keys[i].pub)));
+					frontiers[i] = open->hash ();
+					blocks.push_back (std::move (open));
+				}
+				for (auto i (0); i != num_interations; ++i)
+				{
+					for (auto j (0); j != num_accounts; ++j)
+					{
+						size_t other (num_accounts - j - 1);
+						// Sending to other account
+						--balances[j];
+						auto send (std::make_shared<chratos::state_block> (keys[j].pub, frontiers[j], keys[j].pub, balances[j], keys[other].pub, 0, keys[j].prv, keys[j].pub, work.generate (frontiers[j])));
+						frontiers[j] = send->hash ();
+						blocks.push_back (std::move (send));
+						// Receiving
+						++balances[other];
+						auto receive (std::make_shared<chratos::state_block> (keys[other].pub, frontiers[other], keys[other].pub, balances[other], frontiers[j], 0, keys[other].prv, keys[other].pub, work.generate (frontiers[other])));
+						frontiers[other] = receive->hash ();
+						blocks.push_back (std::move (receive));
+					}
+				}
+				// Processing blocks
+				std::cerr << boost::str (boost::format ("Starting processing %1% active blocks\n") % max_blocks);
+				auto begin (std::chrono::high_resolution_clock::now ());
+				while (!blocks.empty ())
+				{
+					auto block (blocks.front ());
+					node->process_active (block);
+					blocks.pop_front ();
+				}
+				uint64_t block_count (0);
+				while (block_count < max_blocks + 1)
+				{
+					std::this_thread::sleep_for (std::chrono::milliseconds (100));
+					auto transaction (node->store.tx_begin ());
+					block_count = node->store.block_count (transaction).sum ();
+				}
+				auto end (std::chrono::high_resolution_clock::now ());
+				auto time (std::chrono::duration_cast<std::chrono::microseconds> (end - begin).count ());
+				node->stop ();
+				std::cerr << boost::str (boost::format ("%|1$ 12d| us \n%2% blocks per second\n") % time % (max_blocks * 1000000 / time));
+			}
+			else
+			{
+				std::cerr << "For this test ACTIVE_NETWORK should be chratos_test_network" << std::endl;
+			}
+		}
+		else if (vm.count ("debug_validate_blocks"))
+		{
+			chratos::inactive_node node (data_path);
+			auto transaction (node.node->store.tx_begin ());
+			std::cerr << boost::str (boost::format ("Performing blocks hash, signature, work validation...\n"));
+			size_t count (0);
+			for (auto i (node.node->store.latest_begin (transaction)), n (node.node->store.latest_end ()); i != n; ++i)
+			{
+				++count;
+				if ((count % 20000) == 0)
+				{
+					std::cout << boost::str (boost::format ("%1% accounts validated\n") % count);
+				}
+				chratos::account_info info (i->second);
+				chratos::account account (i->first);
+				auto hash (info.open_block);
+				chratos::block_hash calculated_hash (0);
+				while (!hash.is_zero ())
+				{
+					// Retrieving block data
+					auto block (node.node->store.block_get (transaction, hash));
+					// Check for state & open blocks if account field is correct
+					if ((block->type () == chratos::block_type::state && static_cast<chratos::state_block const &> (*block.get ()).hashables.account != account))
+					{
+						std::cerr << boost::str (boost::format ("Incorrect account field for block %1%\n") % hash.to_string ());
+					}
+					// Check if previous field is correct
+					if (calculated_hash != block->previous ())
+					{
+						std::cerr << boost::str (boost::format ("Incorrect previous field for block %1%\n") % hash.to_string ());
+					}
+					// Check if block data is correct (calculating hash)
+					calculated_hash = block->hash ();
+					if (calculated_hash != hash)
+					{
+						std::cerr << boost::str (boost::format ("Invalid data inside block %1% calculated hash: %2%\n") % hash.to_string () % calculated_hash.to_string ());
+					}
+					// Check if block signature is correct
+					if (validate_message (account, hash, block->block_signature ()))
+					{
+						bool invalid (true);
+						// Epoch blocks
+						if (!node.node->ledger.epoch_link.is_zero () && block->type () == chratos::block_type::state)
+						{
+							auto & state_block (static_cast<chratos::state_block &> (*block.get ()));
+							chratos::amount prev_balance (0);
+							if (!state_block.hashables.previous.is_zero ())
+							{
+								prev_balance = node.node->ledger.balance (transaction, state_block.hashables.previous);
+							}
+							if (node.node->ledger.is_epoch_link (state_block.hashables.link) && state_block.hashables.balance == prev_balance)
+							{
+								invalid = validate_message (node.node->ledger.epoch_signer, hash, block->block_signature ());
+							}
+						}
+						if (invalid)
+						{
+							std::cerr << boost::str (boost::format ("Invalid signature for block %1%\n") % hash.to_string ());
+						}
+					}
+					// Check if block work value is correct
+					if (chratos::work_validate (*block.get ()))
+					{
+						std::cerr << boost::str (boost::format ("Invalid work for block %1% value: %2%\n") % hash.to_string () % chratos::to_string_hex (block->block_work ()));
+					}
+					// Retrieving successor block hash
+					hash = node.node->store.block_successor (transaction, hash);
+				}
+			}
+			std::cout << boost::str (boost::format ("%1% accounts validated\n") % count);
+			count = 0;
+			for (auto i (node.node->store.pending_begin (transaction)), n (node.node->store.pending_end ()); i != n; ++i)
+			{
+				++count;
+				if ((count % 50000) == 0)
+				{
+					std::cout << boost::str (boost::format ("%1% pending blocks validated\n") % count);
+				}
+				chratos::pending_key key (i->first);
+				chratos::pending_info info (i->second);
+				// Check block existance
+				auto block (node.node->store.block_get (transaction, key.hash));
+				if (block == nullptr)
+				{
+					std::cerr << boost::str (boost::format ("Pending block not existing %1%\n") % key.hash.to_string ());
+				}
+				else
+				{
+					// Check if pending destination is correct
+					chratos::account destination (0);
+					if (auto state = dynamic_cast<chratos::state_block *> (block.get ()))
+					{
+						if (node.node->ledger.is_send (transaction, *state))
+						{
+							destination = state->hashables.link;
+						}
+					}
+					else
+					{
+						std::cerr << boost::str (boost::format ("Incorrect type for pending block %1%\n") % key.hash.to_string ());
+					}
+					if (key.account != destination)
+					{
+						std::cerr << boost::str (boost::format ("Incorrect destination for pending block %1%\n") % key.hash.to_string ());
+					}
+					// Check if pending source is correct
+					auto account (node.node->ledger.account (transaction, key.hash));
+					if (info.source != account)
+					{
+						std::cerr << boost::str (boost::format ("Incorrect source for pending block %1%\n") % key.hash.to_string ());
+					}
+					// Check if pending amount is correct
+					auto amount (node.node->ledger.amount (transaction, key.hash));
+					if (info.amount != amount)
+					{
+						std::cerr << boost::str (boost::format ("Incorrect amount for pending block %1%\n") % key.hash.to_string ());
+					}
+				}
+			}
+			std::cout << boost::str (boost::format ("%1% pending blocks validated\n") % count);
 		}
 		else if (vm.count ("version"))
 		{

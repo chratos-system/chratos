@@ -11,6 +11,7 @@
 #include <unordered_set>
 
 #include <boost/log/sources/logger.hpp>
+#include <boost/thread/thread.hpp>
 
 namespace chratos
 {
@@ -108,7 +109,7 @@ public:
 	void received_frontier (boost::system::error_code const &, size_t);
 	void request_account (chratos::account const &, chratos::block_hash const &);
 	void unsynced (chratos::block_hash const &, chratos::block_hash const &);
-	void next (MDB_txn *);
+	void next (chratos::transaction const &);
 	void insert_pull (chratos::pull_info const &);
 	std::shared_ptr<chratos::bootstrap_client> connection;
 	chratos::account current;
@@ -161,7 +162,7 @@ public:
 	bulk_push_client (std::shared_ptr<chratos::bootstrap_client> const &);
 	~bulk_push_client ();
 	void start ();
-	void push (MDB_txn *);
+	void push (chratos::transaction const &);
 	void push_block (chratos::block const &);
 	void send_finished ();
 	std::shared_ptr<chratos::bootstrap_client> connection;
@@ -189,7 +190,7 @@ private:
 	std::mutex mutex;
 	std::condition_variable condition;
 	std::vector<std::function<void(bool)>> observers;
-	std::thread thread;
+	boost::thread thread;
 };
 class bootstrap_server;
 class bootstrap_listener
@@ -266,6 +267,7 @@ public:
 	std::unordered_map<chratos::uint256_union, bool> deduplication;
 	chratos::pending_key current_key;
 	bool pending_address_only;
+	bool pending_include_address;
 	bool invalid_request;
 };
 class bulk_pull_blocks;
@@ -276,16 +278,11 @@ public:
 	void set_params ();
 	std::unique_ptr<chratos::block> get_next ();
 	void send_next ();
-	void sent_action (boost::system::error_code const &, size_t);
 	void send_finished ();
 	void no_block_sent (boost::system::error_code const &, size_t);
 	std::shared_ptr<chratos::bootstrap_server> connection;
 	std::unique_ptr<chratos::bulk_pull_blocks> request;
 	std::shared_ptr<std::vector<uint8_t>> send_buffer;
-	chratos::store_iterator<chratos::block_hash, chratos::block_info> stream;
-	chratos::transaction stream_transaction;
-	uint32_t sent_count;
-	chratos::block_hash checksum;
 };
 class bulk_push_server : public std::enable_shared_from_this<chratos::bulk_push_server>
 {

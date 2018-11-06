@@ -1,4 +1,5 @@
 #include <chratos/lib/numbers.hpp>
+#include <chratos/lib/utility.hpp>
 
 #include <ed25519-donna/ed25519.h>
 
@@ -31,7 +32,11 @@ uint8_t account_decode (char value)
 {
 	assert (value >= '0');
 	assert (value <= '~');
-	auto result (account_reverse[value - 0x30] - 0x30);
+	auto result (account_reverse[value - 0x30]);
+	if (result != '~')
+	{
+		result -= 0x30;
+	}
 	return result;
 }
 }
@@ -185,7 +190,9 @@ chratos::uint256_union chratos::uint256_union::operator^ (chratos::uint256_union
 
 chratos::uint256_union::uint256_union (std::string const & hex_a)
 {
-	decode_hex (hex_a);
+	auto error (decode_hex (hex_a));
+
+	release_assert (!error);
 }
 
 void chratos::uint256_union::clear ()
@@ -427,9 +434,17 @@ bool chratos::validate_message (chratos::public_key const & public_key, chratos:
 	return result;
 }
 
+bool chratos::validate_message_batch (const unsigned char ** m, size_t * mlen, const unsigned char ** pk, const unsigned char ** RS, size_t num, int * valid)
+{
+	bool result (0 == ed25519_sign_open_batch (m, mlen, pk, RS, num, valid));
+	return result;
+}
+
 chratos::uint128_union::uint128_union (std::string const & string_a)
 {
-	decode_hex (string_a);
+	auto error (decode_hex (string_a));
+
+	release_assert (!error);
 }
 
 chratos::uint128_union::uint128_union (uint64_t value_a)

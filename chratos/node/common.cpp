@@ -87,6 +87,65 @@ void chratos::message_header::ipv4_only_set (bool value_a)
 // MTU - IP header - UDP header
 const size_t chratos::message_parser::max_safe_udp_message_size = 508;
 
+std::string chratos::message_parser::status_string ()
+{
+	switch (status)
+	{
+		case chratos::message_parser::parse_status::success:
+		{
+			return "success";
+		}
+		case chratos::message_parser::parse_status::insufficient_work:
+		{
+			return "insufficient_work";
+		}
+		case chratos::message_parser::parse_status::invalid_header:
+		{
+			return "invalid_header";
+		}
+		case chratos::message_parser::parse_status::invalid_message_type:
+		{
+			return "invalid_message_type";
+		}
+		case chratos::message_parser::parse_status::invalid_keepalive_message:
+		{
+			return "invalid_keepalive_message";
+		}
+		case chratos::message_parser::parse_status::invalid_publish_message:
+		{
+			return "invalid_publish_message";
+		}
+		case chratos::message_parser::parse_status::invalid_confirm_req_message:
+		{
+			return "invalid_confirm_req_message";
+		}
+		case chratos::message_parser::parse_status::invalid_confirm_ack_message:
+		{
+			return "invalid_confirm_ack_message";
+		}
+		case chratos::message_parser::parse_status::invalid_node_id_handshake_message:
+		{
+			return "invalid_node_id_handshake_message";
+		}
+		case chratos::message_parser::parse_status::outdated_version:
+		{
+			return "outdated_version";
+		}
+		case chratos::message_parser::parse_status::invalid_magic:
+		{
+			return "invalid_magic";
+		}
+		case chratos::message_parser::parse_status::invalid_network:
+		{
+			return "invalid_network";
+		}
+	}
+
+	assert (false);
+
+	return "[unknown parse_status]";
+}
+
 chratos::message_parser::message_parser (chratos::message_visitor & visitor_a, chratos::work_pool & pool_a) :
 visitor (visitor_a),
 pool (pool_a),
@@ -105,9 +164,17 @@ void chratos::message_parser::deserialize_buffer (uint8_t const * buffer_a, size
 		chratos::message_header header (error, stream);
 		if (!error)
 		{
-			if (chratos::chratos_network == chratos::chratos_networks::chratos_beta_network && header.version_using < chratos::protocol_version)
+			if (chratos::chratos_network == chratos::chratos_networks::chratos_beta_network && header.version_using < chratos::protocol_version_reasonable_min)
 			{
 				status = parse_status::outdated_version;
+			}
+			else if (!header.valid_magic ())
+			{
+				status = parse_status::invalid_magic;
+			}
+			else if (!header.valid_network ())
+			{
+				status = parse_status::invalid_network;
 			}
 			else
 			{
@@ -262,7 +329,7 @@ bool chratos::message_parser::at_end (chratos::stream & stream_a)
 chratos::keepalive::keepalive () :
 message (chratos::message_type::keepalive)
 {
-	chratos::endpoint endpoint (boost::asio::ip::address_v6{}, 0);
+	chratos::endpoint endpoint (boost::asio::ip::address_v6 {}, 0);
 	for (auto i (peers.begin ()), n (peers.end ()); i != n; ++i)
 	{
 		*i = endpoint;
@@ -730,4 +797,86 @@ void chratos::node_id_handshake::visit (chratos::message_visitor & visitor_a) co
 
 chratos::message_visitor::~message_visitor ()
 {
+}
+
+bool chratos::parse_port (std::string const & string_a, uint16_t & port_a)
+{
+	bool result;
+	size_t converted;
+	try
+	{
+		port_a = std::stoul (string_a, &converted);
+		result = converted != string_a.size () || converted > std::numeric_limits<uint16_t>::max ();
+	}
+	catch (...)
+	{
+		result = true;
+	}
+	return result;
+}
+
+bool chratos::parse_address_port (std::string const & string, boost::asio::ip::address & address_a, uint16_t & port_a)
+{
+	auto result (false);
+	auto port_position (string.rfind (':'));
+	if (port_position != std::string::npos && port_position > 0)
+	{
+		std::string port_string (string.substr (port_position + 1));
+		try
+		{
+			uint16_t port;
+			result = parse_port (port_string, port);
+			if (!result)
+			{
+				boost::system::error_code ec;
+				auto address (boost::asio::ip::address_v6::from_string (string.substr (0, port_position), ec));
+				if (!ec)
+				{
+					address_a = address;
+					port_a = port;
+				}
+				else
+				{
+					result = true;
+				}
+			}
+			else
+			{
+				result = true;
+			}
+		}
+		catch (...)
+		{
+			result = true;
+		}
+	}
+	else
+	{
+		result = true;
+	}
+	return result;
+}
+
+bool chratos::parse_endpoint (std::string const & string, chratos::endpoint & endpoint_a)
+{
+	boost::asio::ip::address address;
+	uint16_t port;
+	auto result (parse_address_port (string, address, port));
+	if (!result)
+	{
+		endpoint_a = chratos::endpoint (address, port);
+	}
+	return result;
+}
+
+bool chratos::parse_tcp_endpoint (std::string const & string, chratos::tcp_endpoint & endpoint_a)
+{
+	boost::asio::ip::address address;
+	uint16_t port;
+	auto result (parse_address_port (string, address, port));
+	if (!result)
+	{
+		endpoint_a = chratos::tcp_endpoint (address, port);
+	}
+	return result;
 }

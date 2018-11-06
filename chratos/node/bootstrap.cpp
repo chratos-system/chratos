@@ -46,7 +46,7 @@ void chratos::socket::async_write (std::shared_ptr<std::vector<uint8_t>> buffer_
 {
 	auto this_l (shared_from_this ());
 	start ();
-	boost::asio::async_write (socket_m, boost::asio::buffer (buffer_a->data (), buffer_a->size ()), [this_l, callback_a](boost::system::error_code const & ec, size_t size_a) {
+	boost::asio::async_write (socket_m, boost::asio::buffer (buffer_a->data (), buffer_a->size ()), [this_l, callback_a, buffer_a](boost::system::error_code const & ec, size_t size_a) {
 		this_l->stop ();
 		callback_a (ec, size_a);
 	});
@@ -184,7 +184,7 @@ void chratos::frontier_req_client::run ()
 		request->serialize (stream);
 	}
 	auto this_l (shared_from_this ());
-	connection->socket->async_write (send_buffer, [this_l, send_buffer](boost::system::error_code const & ec, size_t size_a) {
+	connection->socket->async_write (send_buffer, [this_l](boost::system::error_code const & ec, size_t size_a) {
 		if (!ec)
 		{
 			this_l->receive_frontier ();
@@ -210,7 +210,7 @@ current (0),
 count (0),
 bulk_push_cost (0)
 {
-	chratos::transaction transaction (connection->node->store.environment, nullptr, false);
+	auto transaction (connection->node->store.tx_begin_read ());
 	next (transaction);
 }
 
@@ -286,7 +286,7 @@ void chratos::frontier_req_client::received_frontier (boost::system::error_code 
 		{
 			BOOST_LOG (connection->node->log) << boost::str (boost::format ("Received %1% frontiers from %2%") % std::to_string (count) % connection->socket->remote_endpoint ());
 		}
-		chratos::transaction transaction (connection->node->store.environment, nullptr, false);
+		auto transaction (connection->node->store.tx_begin_read ());
 		if (!account.is_zero ())
 		{
 			while (!current.is_zero () && current < account)
@@ -365,7 +365,7 @@ void chratos::frontier_req_client::received_frontier (boost::system::error_code 
 	}
 }
 
-void chratos::frontier_req_client::next (MDB_txn * transaction_a)
+void chratos::frontier_req_client::next (chratos::transaction const & transaction_a)
 {
 	auto iterator (connection->node->store.latest_begin (transaction_a, chratos::uint256_union (current.number () + 1)));
 	if (iterator != connection->node->store.latest_end ())
@@ -427,7 +427,7 @@ void chratos::bulk_pull_client::request ()
 		BOOST_LOG (connection->node->log) << boost::str (boost::format ("%1% accounts in pull queue") % connection->attempt->pulls.size ());
 	}
 	auto this_l (shared_from_this ());
-	connection->socket->async_write (buffer, [this_l, buffer](boost::system::error_code const & ec, size_t size_a) {
+	connection->socket->async_write (buffer, [this_l](boost::system::error_code const & ec, size_t size_a) {
 		if (!ec)
 		{
 			this_l->receive_block ();
@@ -473,20 +473,20 @@ void chratos::bulk_pull_client::received_type ()
 			});
 			break;
 		}
-    case chratos::block_type::dividend:
-    {
+		case chratos::block_type::dividend:
+		{
 			connection->socket->async_read (connection->receive_buffer, chratos::dividend_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
 				this_l->received_block (ec, size_a, type);
-      });
-      break;
-    }
-    case chratos::block_type::claim:
-    {
+			});
+			break;
+		}
+		case chratos::block_type::claim:
+		{
 			connection->socket->async_read (connection->receive_buffer, chratos::claim_block::size, [this_l, type](boost::system::error_code const & ec, size_t size_a) {
 				this_l->received_block (ec, size_a, type);
-      });
-      break;
-    }
+			});
+			break;
+		}
 		case chratos::block_type::not_a_block:
 		{
 			// Avoid re-using slow peers, or peers that sent the wrong blocks.
@@ -572,8 +572,8 @@ void chratos::bulk_push_client::start ()
 		message.serialize (stream);
 	}
 	auto this_l (shared_from_this ());
-	connection->socket->async_write (buffer, [this_l, buffer](boost::system::error_code const & ec, size_t size_a) {
-		chratos::transaction transaction (this_l->connection->node->store.environment, nullptr, false);
+	connection->socket->async_write (buffer, [this_l](boost::system::error_code const & ec, size_t size_a) {
+		auto transaction (this_l->connection->node->store.tx_begin_read ());
 		if (!ec)
 		{
 			this_l->push (transaction);
@@ -588,7 +588,7 @@ void chratos::bulk_push_client::start ()
 	});
 }
 
-void chratos::bulk_push_client::push (MDB_txn * transaction_a)
+void chratos::bulk_push_client::push (chratos::transaction const & transaction_a)
 {
 	std::unique_ptr<chratos::block> block;
 	bool finished (false);
@@ -663,10 +663,10 @@ void chratos::bulk_push_client::push_block (chratos::block const & block_a)
 		chratos::serialize_block (stream, block_a);
 	}
 	auto this_l (shared_from_this ());
-	connection->socket->async_write (buffer, [this_l, buffer](boost::system::error_code const & ec, size_t size_a) {
+	connection->socket->async_write (buffer, [this_l](boost::system::error_code const & ec, size_t size_a) {
 		if (!ec)
 		{
-			chratos::transaction transaction (this_l->connection->node->store.environment, nullptr, false);
+			auto transaction (this_l->connection->node->store.tx_begin_read ());
 			this_l->push (transaction);
 		}
 		else
@@ -1112,7 +1112,10 @@ void chratos::bootstrap_attempt::add_bulk_push_target (chratos::block_hash const
 chratos::bootstrap_initiator::bootstrap_initiator (chratos::node & node_a) :
 node (node_a),
 stopped (false),
-thread ([this]() { run_bootstrap (); })
+thread ([this]() {
+	chratos::thread_role::set (chratos::thread_role::name::bootstrap_initiator);
+	run_bootstrap ();
+})
 {
 }
 
@@ -1346,7 +1349,11 @@ void chratos::bootstrap_server::receive_header_action (boost::system::error_code
 				}
 				case chratos::message_type::bulk_pull_blocks:
 				{
-					node->stats.inc (chratos::stat::type::bootstrap, chratos::stat::detail::bulk_pull_blocks, chratos::stat::dir::in);
+					if (node->config.logging.network_logging ())
+					{
+						BOOST_LOG (node->log) << boost::str (boost::format ("Received deprecated \"bulk_pull_block\" from bootstrap connection %1%") % static_cast<uint8_t> (header.type));
+					}
+
 					auto this_l (shared_from_this ());
 					socket->async_read (receive_buffer, sizeof (chratos::uint256_union) + sizeof (chratos::uint256_union) + sizeof (bulk_pull_blocks_mode) + sizeof (uint32_t), [this_l, header](boost::system::error_code const & ec, size_t size_a) {
 						this_l->receive_bulk_pull_blocks_action (ec, size_a, header);
@@ -1438,7 +1445,7 @@ void chratos::bootstrap_server::receive_bulk_pull_blocks_action (boost::system::
 		{
 			if (node->config.logging.bulk_pull_logging ())
 			{
-				BOOST_LOG (node->log) << boost::str (boost::format ("Received bulk pull blocks for %1% to %2%") % request->min_hash.to_string () % request->max_hash.to_string ());
+				BOOST_LOG (node->log) << boost::str (boost::format ("Received deprecated bulk pull blocks for %1% to %2%") % request->min_hash.to_string () % request->max_hash.to_string ());
 			}
 			add_request (std::unique_ptr<chratos::message> (request.release ()));
 			receive ();
@@ -1578,7 +1585,7 @@ void chratos::bulk_pull_server::set_current_end ()
 {
 	include_start = false;
 	assert (request != nullptr);
-	chratos::transaction transaction (connection->node->store.environment, nullptr, false);
+	auto transaction (connection->node->store.tx_begin_read ());
 	if (!connection->node->store.block_exists (transaction, request->end))
 	{
 		if (connection->node->config.logging.bulk_pull_logging ())
@@ -1685,7 +1692,7 @@ std::unique_ptr<chratos::block> chratos::bulk_pull_server::get_next ()
 
 	if (send_current)
 	{
-		chratos::transaction transaction (connection->node->store.environment, nullptr, false);
+		auto transaction (connection->node->store.tx_begin_read ());
 		result = connection->node->store.block_get (transaction, current);
 		if (result != nullptr && set_current_to_end == false)
 		{
@@ -1778,13 +1785,23 @@ void chratos::bulk_pull_account_server::set_params ()
 	 * Parse the flags
 	 */
 	invalid_request = false;
+	pending_include_address = false;
+	pending_address_only = false;
 	if (request->flags == chratos::bulk_pull_account_flags::pending_address_only)
 	{
 		pending_address_only = true;
 	}
+	else if (request->flags == chratos::bulk_pull_account_flags::pending_hash_amount_and_address)
+	{
+		/**
+		 ** This is the same as "pending_hash_and_amount" but with the
+		 ** sending address appended, for UI purposes mainly.
+		 **/
+		pending_include_address = true;
+	}
 	else if (request->flags == chratos::bulk_pull_account_flags::pending_hash_and_amount)
 	{
-		pending_address_only = false;
+		/** The defaults are set above **/
 	}
 	else
 	{
@@ -1825,7 +1842,7 @@ void chratos::bulk_pull_account_server::send_frontier ()
 	/**
 	 ** Establish a database transaction
 	 **/
-	chratos::transaction stream_transaction (connection->node->store.environment, nullptr, false);
+	auto stream_transaction (connection->node->store.tx_begin_read ());
 
 	/**
 	 ** Get account balance and frontier block hash
@@ -1893,6 +1910,14 @@ void chratos::bulk_pull_account_server::send_next_block ()
 
 			write (output_stream, block_info_key->hash.bytes);
 			write (output_stream, block_info->amount.bytes);
+
+			if (pending_include_address)
+			{
+				/**
+				 ** Write the source address as well, if requested
+				 **/
+				write (output_stream, block_info->source.bytes);
+			}
 		}
 
 		auto this_l (shared_from_this ());
@@ -1925,7 +1950,7 @@ std::pair<std::unique_ptr<chratos::pending_key>, std::unique_ptr<chratos::pendin
 		 * destroy a database transaction, to avoid locking the
 		 * database for a prolonged period.
 		 */
-		chratos::transaction stream_transaction (connection->node->store.environment, nullptr, false);
+		auto stream_transaction (connection->node->store.tx_begin_read ());
 		auto stream (connection->node->store.pending_begin (stream_transaction, current_key));
 
 		if (stream == chratos::store_iterator<chratos::pending_key, chratos::pending_info> (nullptr))
@@ -2005,7 +2030,9 @@ void chratos::bulk_pull_account_server::send_finished ()
 	 * The "bulk_pull_account" final sequence is a final block of all
 	 * zeros.  If we are sending only account public keys (with the
 	 * "pending_address_only" flag) then it will be 256-bits of zeros,
-	 * otherwise it will be 384-bits of zeros.
+	 * otherwise it will be either 384-bits of zeros (if the
+	 * "pending_include_address" flag is not set) or 640-bits of zeros
+	 * (if that flag is set).
 	 */
 	send_buffer->clear ();
 
@@ -2019,6 +2046,10 @@ void chratos::bulk_pull_account_server::send_finished ()
 		if (!pending_address_only)
 		{
 			write (output_stream, balance_zero.bytes);
+			if (pending_include_address)
+			{
+				write (output_stream, account_zero.bytes);
+			}
 		}
 	}
 
@@ -2044,7 +2075,14 @@ void chratos::bulk_pull_account_server::complete (boost::system::error_code cons
 		}
 		else
 		{
-			assert (size_a == 48);
+			if (pending_include_address)
+			{
+				assert (size_a == 80);
+			}
+			else
+			{
+				assert (size_a == 48);
+			}
 		}
 
 		connection->finish_request ();
@@ -2071,151 +2109,16 @@ current_key (0, 0)
 }
 
 /**
- * Bulk pull of a range of blocks, or a checksum for a range of
- * blocks [min_hash, max_hash) up to a max of max_count.  mode
- * specifies whether the list is returned or a single checksum
- * of all the hashes.  The checksum is computed by XORing the
- * hash of all the blocks that would be returned
+ * DEPRECATED
  */
 void chratos::bulk_pull_blocks_server::set_params ()
 {
 	assert (request != nullptr);
-
-	if (connection->node->config.logging.bulk_pull_logging ())
-	{
-		std::string modeName = "<unknown>";
-
-		switch (request->mode)
-		{
-			case chratos::bulk_pull_blocks_mode::list_blocks:
-				modeName = "list";
-				break;
-			case chratos::bulk_pull_blocks_mode::checksum_blocks:
-				modeName = "checksum";
-				break;
-		}
-
-		BOOST_LOG (connection->node->log) << boost::str (boost::format ("Bulk pull of block range starting, min (%1%) to max (%2%), max_count = %3%, mode = %4%") % request->min_hash.to_string () % request->max_hash.to_string () % request->max_count % modeName);
-	}
-
-	stream = connection->node->store.block_info_begin (stream_transaction, request->min_hash);
-
-	if (request->max_hash < request->min_hash)
-	{
-		if (connection->node->config.logging.bulk_pull_logging ())
-		{
-			BOOST_LOG (connection->node->log) << boost::str (boost::format ("Bulk pull of block range is invalid, min (%1%) is greater than max (%2%)") % request->min_hash.to_string () % request->max_hash.to_string ());
-		}
-
-		request->max_hash = request->min_hash;
-	}
 }
 
 void chratos::bulk_pull_blocks_server::send_next ()
 {
-	std::unique_ptr<chratos::block> block (get_next ());
-	if (block != nullptr)
-	{
-		if (connection->node->config.logging.bulk_pull_logging ())
-		{
-			BOOST_LOG (connection->node->log) << boost::str (boost::format ("Sending block: %1%") % block->hash ().to_string ());
-		}
-
-		send_buffer->clear ();
-		auto this_l (shared_from_this ());
-
-		if (request->mode == chratos::bulk_pull_blocks_mode::list_blocks)
-		{
-			chratos::vectorstream stream (*send_buffer);
-			chratos::serialize_block (stream, *block);
-		}
-		else if (request->mode == chratos::bulk_pull_blocks_mode::checksum_blocks)
-		{
-			checksum ^= block->hash ();
-		}
-
-		connection->socket->async_write (send_buffer, [this_l](boost::system::error_code const & ec, size_t size_a) {
-			this_l->sent_action (ec, size_a);
-		});
-	}
-	else
-	{
-		if (connection->node->config.logging.bulk_pull_logging ())
-		{
-			BOOST_LOG (connection->node->log) << boost::str (boost::format ("Done sending blocks"));
-		}
-
-		if (request->mode == chratos::bulk_pull_blocks_mode::checksum_blocks)
-		{
-			{
-				send_buffer->clear ();
-				chratos::vectorstream stream (*send_buffer);
-				write (stream, static_cast<uint8_t> (chratos::block_type::not_a_block));
-				write (stream, checksum);
-			}
-
-			auto this_l (shared_from_this ());
-			if (connection->node->config.logging.bulk_pull_logging ())
-			{
-				BOOST_LOG (connection->node->log) << boost::str (boost::format ("Sending checksum: %1%") % checksum.to_string ());
-			}
-
-			connection->socket->async_write (send_buffer, [this_l](boost::system::error_code const & ec, size_t size_a) {
-				this_l->send_finished ();
-			});
-		}
-		else
-		{
-			send_finished ();
-		}
-	}
-}
-
-std::unique_ptr<chratos::block> chratos::bulk_pull_blocks_server::get_next ()
-{
-	std::unique_ptr<chratos::block> result;
-	bool out_of_bounds (false);
-
-	if (request->max_count != 0)
-	{
-		if (sent_count >= request->max_count)
-		{
-			out_of_bounds = true;
-		}
-
-		sent_count++;
-	}
-
-	if (!out_of_bounds)
-	{
-		if (stream != connection->node->store.block_info_end ())
-		{
-			auto current = chratos::uint256_union (stream->first);
-			if (current < request->max_hash)
-			{
-				chratos::transaction transaction (connection->node->store.environment, nullptr, false);
-				result = connection->node->store.block_get (transaction, current);
-
-				++stream;
-			}
-		}
-	}
-	return result;
-}
-
-void chratos::bulk_pull_blocks_server::sent_action (boost::system::error_code const & ec, size_t size_a)
-{
-	if (!ec)
-	{
-		send_next ();
-	}
-	else
-	{
-		if (connection->node->config.logging.bulk_pull_logging ())
-		{
-			BOOST_LOG (connection->node->log) << boost::str (boost::format ("Unable to bulk send block: %1%") % ec.message ());
-		}
-	}
+	send_finished ();
 }
 
 void chratos::bulk_pull_blocks_server::send_finished ()
@@ -2223,10 +2126,6 @@ void chratos::bulk_pull_blocks_server::send_finished ()
 	send_buffer->clear ();
 	send_buffer->push_back (static_cast<uint8_t> (chratos::block_type::not_a_block));
 	auto this_l (shared_from_this ());
-	if (connection->node->config.logging.bulk_pull_logging ())
-	{
-		BOOST_LOG (connection->node->log) << "Bulk sending finished";
-	}
 	connection->socket->async_write (send_buffer, [this_l](boost::system::error_code const & ec, size_t size_a) {
 		this_l->no_block_sent (ec, size_a);
 	});
@@ -2239,23 +2138,12 @@ void chratos::bulk_pull_blocks_server::no_block_sent (boost::system::error_code 
 		assert (size_a == 1);
 		connection->finish_request ();
 	}
-	else
-	{
-		if (connection->node->config.logging.bulk_pull_logging ())
-		{
-			BOOST_LOG (connection->node->log) << "Unable to send not-a-block";
-		}
-	}
 }
 
 chratos::bulk_pull_blocks_server::bulk_pull_blocks_server (std::shared_ptr<chratos::bootstrap_server> const & connection_a, std::unique_ptr<chratos::bulk_pull_blocks> request_a) :
 connection (connection_a),
 request (std::move (request_a)),
-send_buffer (std::make_shared<std::vector<uint8_t>> ()),
-stream (nullptr),
-stream_transaction (connection_a->node->store.environment, nullptr, false),
-sent_count (0),
-checksum (0)
+send_buffer (std::make_shared<std::vector<uint8_t>> ())
 {
 	set_params ();
 }
@@ -2436,7 +2324,7 @@ void chratos::frontier_req_server::sent_action (boost::system::error_code const 
 
 void chratos::frontier_req_server::next ()
 {
-	chratos::transaction transaction (connection->node->store.environment, nullptr, false);
+	auto transaction (connection->node->store.tx_begin_read ());
 	auto iterator (connection->node->store.latest_begin (transaction, current.number () + 1));
 	if (iterator != connection->node->store.latest_end ())
 	{

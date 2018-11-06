@@ -25,9 +25,16 @@ struct hash<chratos::uint256_union>
 }
 namespace chratos
 {
-const uint8_t protocol_version = 0x0d;
+const uint8_t protocol_version = 0x0f;
 const uint8_t protocol_version_min = 0x07;
 const uint8_t node_id_version = 0x0c;
+
+/*
+ * Do not bootstrap from nodes older than this version.
+ * Also, on the beta network do not process messages from
+ * nodes older than this version.
+ */
+const uint8_t protocol_version_reasonable_min = 0x0d;
 
 /**
  * A key pair. The private key is generated from the random pool, or passed in
@@ -71,7 +78,7 @@ public:
 	chratos::block_hash head;
 	chratos::block_hash rep_block;
 	chratos::block_hash open_block;
-  chratos::block_hash dividend_block;
+	chratos::block_hash dividend_block;
 	chratos::amount balance;
 	/** Seconds since posix epoch */
 	uint64_t modified;
@@ -85,10 +92,10 @@ public:
 class dividend_info
 {
 public:
-  dividend_info ();
-  dividend_info (chratos::dividend_info const &) = default;
+	dividend_info ();
+	dividend_info (chratos::dividend_info const &) = default;
 	dividend_info (chratos::block_hash const &, chratos::amount const &, uint64_t, uint64_t, epoch);
-  void serialize (chratos::stream &) const;
+	void serialize (chratos::stream &) const;
 	bool deserialize (chratos::stream &);
 	bool operator== (chratos::dividend_info const &) const;
 	bool operator!= (chratos::dividend_info const &) const;
@@ -115,7 +122,7 @@ public:
 	chratos::account source;
 	chratos::amount amount;
 	chratos::epoch epoch;
-  chratos::block_hash dividend;
+	chratos::block_hash dividend;
 };
 class pending_key
 {
@@ -131,7 +138,7 @@ public:
 class pending_dividend_info
 {
 public:
-  pending_dividend_info ();
+	pending_dividend_info ();
 };
 class pending_dividend_key
 {
@@ -154,8 +161,8 @@ public:
 	size_t sum ();
 	size_t state_v0;
 	size_t state_v1;
-  size_t dividend;
-  size_t claim;
+	size_t dividend;
+	size_t claim;
 };
 typedef std::vector<boost::variant<std::shared_ptr<chratos::block>, chratos::block_hash>>::const_iterator vote_blocks_vec_iter;
 class iterate_vote_blocks_as_hash
@@ -215,11 +222,11 @@ enum class process_result
 	balance_mismatch, // Balance and amount delta don't match
 	representative_mismatch, // Representative is changed when it is not allowed
 	block_position, // This block cannot follow the previous block
-  outstanding_pendings, // Dividend claim block has outstanding pendings.
-  dividend_too_small, // Dividend amount is not large enough
-  incorrect_dividend, // Incorrect dividend being sent
-  dividend_fork, // Malicious fork based on previous dividend
-  invalid_dividend_account
+	outstanding_pendings, // Dividend claim block has outstanding pendings.
+	dividend_too_small, // Dividend amount is not large enough
+	incorrect_dividend, // Incorrect dividend being sent
+	dividend_fork, // Malicious fork based on previous dividend
+	invalid_dividend_account
 };
 class process_return
 {

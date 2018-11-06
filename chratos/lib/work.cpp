@@ -32,10 +32,13 @@ done (false),
 opencl (opencl_a)
 {
 	static_assert (ATOMIC_INT_LOCK_FREE == 2, "Atomic int needed");
-	auto count (chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? 1 : std::min (max_threads_a, std::max (1u, std::thread::hardware_concurrency ())));
+	boost::thread::attributes attrs;
+	chratos::thread_attributes::set (attrs);
+	auto count (chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? 1 : std::min (max_threads_a, std::max (1u, boost::thread::hardware_concurrency ())));
 	for (auto i (0); i < count; ++i)
 	{
-		auto thread (std::thread ([this, i]() {
+		auto thread (boost::thread (attrs, [this, i]() {
+			chratos::thread_role::set (chratos::thread_role::name::work);
 			chratos::work_thread_reprioritize ();
 			loop (i);
 		}));

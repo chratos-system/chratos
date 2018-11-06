@@ -17,7 +17,7 @@ namespace
 char const * test_private_key_data = "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
 char const * test_public_key_data = "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0"; // chr_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo
 char const * beta_public_key_data = "5DB43C7501AC8C1CE5C21C9CF4F2EA1973205F315BF419BD3401B2D3A009740D"; // chr_3betaz86ypbygpqbookmzpnmd5jhh4efmd8arr9a3n4bdmj1zgnzad7xpmfp
-char const * live_public_key_data = "6FF1E852575C16DC7314C615A84FACC02351D1A6A984FA0DB49A4CFBEAFA05B6"; // chr__1uzjx3b7gq1pujsjbjioo39tsi35c9atfce6za8ub8kezhohn3fpds4hjj37 
+char const * live_public_key_data = "6FF1E852575C16DC7314C615A84FACC02351D1A6A984FA0DB49A4CFBEAFA05B6"; // chr__1uzjx3b7gq1pujsjbjioo39tsi35c9atfce6za8ub8kezhohn3fpds4hjj37
 
 char const * test_dividend_private_key_data = "A0F9F9B553D891620A16D4B1E3AD52C4D20F85A3FA35306DD6E845DCAB5DCCCD";
 
@@ -72,9 +72,9 @@ public:
 	chratos_test_account (test_public_key_data),
 	chratos_beta_account (beta_public_key_data),
 	chratos_live_account (live_public_key_data),
-  chratos_test_dividend_account (test_dividend_public_key_data),
-  chratos_beta_dividend_account (beta_dividend_public_key_data),
-  chratos_live_dividend_account (live_dividend_public_key_data),
+	chratos_test_dividend_account (test_dividend_public_key_data),
+	chratos_beta_dividend_account (beta_dividend_public_key_data),
+	chratos_live_dividend_account (live_dividend_public_key_data),
 	chratos_test_genesis (test_genesis_data),
 	chratos_beta_genesis (beta_genesis_data),
 	chratos_live_genesis (live_genesis_data),
@@ -83,7 +83,7 @@ public:
 	dividend_account (chratos::chratos_network == chratos::chratos_networks::chratos_test_network ? chratos_test_dividend_account : chratos::chratos_network == chratos::chratos_networks::chratos_beta_network ? chratos_beta_dividend_account : chratos_live_dividend_account),
 	genesis_amount (std::numeric_limits<chratos::uint128_t>::max ()),
 	burn_account (0),
-  dividend_base (0)
+	dividend_base (0)
 	{
 		CryptoPP::AutoSeededRandomPool random_pool;
 		// Randomly generating these mean no two nodes will ever have the same sentinel values which protects against some insecure algorithms
@@ -102,13 +102,13 @@ public:
 	std::string chratos_beta_genesis;
 	std::string chratos_live_genesis;
 	chratos::account genesis_account;
-  chratos::account dividend_account;
+	chratos::account dividend_account;
 	std::string genesis_block;
 	chratos::uint128_t genesis_amount;
 	chratos::block_hash not_a_block;
 	chratos::account not_an_account;
 	chratos::account burn_account;
-  chratos::block_hash dividend_base;
+	chratos::block_hash dividend_base;
 };
 ledger_constants globals;
 }
@@ -168,7 +168,7 @@ chratos::account_info::account_info () :
 head (0),
 rep_block (0),
 open_block (0),
-dividend_block(dividend_base),
+dividend_block (dividend_base),
 balance (0),
 modified (0),
 block_count (0),
@@ -193,7 +193,7 @@ void chratos::account_info::serialize (chratos::stream & stream_a) const
 	write (stream_a, head.bytes);
 	write (stream_a, rep_block.bytes);
 	write (stream_a, open_block.bytes);
-  write (stream_a, dividend_block.bytes);
+	write (stream_a, dividend_block.bytes);
 	write (stream_a, balance.bytes);
 	write (stream_a, modified);
 	write (stream_a, block_count);
@@ -210,19 +210,19 @@ bool chratos::account_info::deserialize (chratos::stream & stream_a)
 			error = read (stream_a, open_block.bytes);
 			if (!error)
 			{
-        error = read (stream_a, dividend_block.bytes);
-        if (!error)
-        {
-          error = read (stream_a, balance.bytes);
-          if (!error)
-          {
-            error = read (stream_a, modified);
-            if (!error)
-            {
-              error = read (stream_a, block_count);
-            }
-          }
-        }
+				error = read (stream_a, dividend_block.bytes);
+				if (!error)
+				{
+					error = read (stream_a, balance.bytes);
+					if (!error)
+					{
+						error = read (stream_a, modified);
+						if (!error)
+						{
+							error = read (stream_a, block_count);
+						}
+					}
+				}
 			}
 		}
 	}
@@ -279,25 +279,24 @@ void chratos::dividend_info::serialize (chratos::stream & stream_a) const
 
 bool chratos::dividend_info::deserialize (chratos::stream & stream_a)
 {
-  auto error (read (stream_a, head.bytes));
+	auto error (read (stream_a, head.bytes));
 	if (!error)
 	{
-    error = read (stream_a, balance.bytes);
-    if (!error)
-    {
-      error = read (stream_a, modified);
-      if (!error)
-      {
-        error = read (stream_a, block_count);
-      }
-    }
+		error = read (stream_a, balance.bytes);
+		if (!error)
+		{
+			error = read (stream_a, modified);
+			if (!error)
+			{
+				error = read (stream_a, block_count);
+			}
+		}
 	}
 	return error;
 }
 
 bool chratos::dividend_info::operator== (chratos::dividend_info const & other_a) const
 {
-
 	return head == other_a.head && balance == other_a.balance && modified == other_a.modified && block_count == other_a.block_count && epoch == other_a.epoch;
 }
 
@@ -357,10 +356,10 @@ bool chratos::pending_info::deserialize (chratos::stream & stream_a)
 	if (!result)
 	{
 		result = chratos::read (stream_a, amount.bytes);
-    if (!result)
-    {
-      result = chratos::read (stream_a, dividend);
-    }
+		if (!result)
+		{
+			result = chratos::read (stream_a, dividend.bytes);
+		}
 	}
 	return result;
 }
@@ -501,154 +500,6 @@ std::string chratos::vote::to_json () const
 	return stream.str ();
 }
 
-chratos::amount_visitor::amount_visitor (MDB_txn * transaction_a, chratos::block_store & store_a) :
-transaction (transaction_a),
-store (store_a),
-current_amount (0),
-current_balance (0),
-amount (0)
-{
-}
-
-void chratos::amount_visitor::state_block (chratos::state_block const & block_a)
-{
-	current_balance = block_a.hashables.previous;
-	amount = block_a.hashables.balance.number ();
-	current_amount = 0;
-}
-
-void chratos::amount_visitor::dividend_block (chratos::dividend_block const & block_a)
-{
-	current_balance = block_a.hashables.previous;
-	amount = block_a.hashables.balance.number ();
-	current_amount = 0;
-}
-
-void chratos::amount_visitor::claim_block (chratos::claim_block const & block_a)
-{
-	current_balance = block_a.hashables.previous;
-	amount = block_a.hashables.balance.number ();
-	current_amount = 0;
-}
-
-void chratos::amount_visitor::compute (chratos::block_hash const & block_hash)
-{
-	current_amount = block_hash;
-	while (!current_amount.is_zero () || !current_balance.is_zero ())
-	{
-		if (!current_amount.is_zero ())
-		{
-			auto block (store.block_get (transaction, current_amount));
-			if (block != nullptr)
-			{
-				block->visit (*this);
-			}
-			else
-			{
-				if (block_hash == chratos::genesis_account)
-				{
-					amount = std::numeric_limits<chratos::uint128_t>::max ();
-					current_amount = 0;
-				}
-				else
-				{
-					assert (false);
-					amount = 0;
-					current_amount = 0;
-				}
-			}
-		}
-		else
-		{
-			balance_visitor prev (transaction, store);
-			prev.compute (current_balance);
-			amount = amount < prev.balance ? prev.balance - amount : amount - prev.balance;
-			current_balance = 0;
-		}
-	}
-}
-
-chratos::balance_visitor::balance_visitor (MDB_txn * transaction_a, chratos::block_store & store_a) :
-transaction (transaction_a),
-store (store_a),
-current_balance (0),
-current_amount (0),
-balance (0)
-{
-}
-
-void chratos::balance_visitor::state_block (chratos::state_block const & block_a)
-{
-	balance = block_a.hashables.balance.number ();
-	current_balance = 0;
-}
-
-void chratos::balance_visitor::dividend_block (chratos::dividend_block const & block_a)
-{
-	balance += block_a.hashables.balance.number ();
-	current_balance = 0;
-}
-
-void chratos::balance_visitor::claim_block (chratos::claim_block const & block_a)
-{
-	balance += block_a.hashables.balance.number ();
-  current_balance = 0;
-}
-
-void chratos::balance_visitor::compute (chratos::block_hash const & block_hash)
-{
-	current_balance = block_hash;
-	while (!current_balance.is_zero () || !current_amount.is_zero ())
-	{
-		if (!current_amount.is_zero ())
-		{
-			amount_visitor source (transaction, store);
-			source.compute (current_amount);
-			balance += source.amount;
-			current_amount = 0;
-		}
-		else
-		{
-			auto block (store.block_get (transaction, current_balance));
-			assert (block != nullptr);
-			block->visit (*this);
-		}
-	}
-}
-
-chratos::representative_visitor::representative_visitor (MDB_txn * transaction_a, chratos::block_store & store_a) :
-transaction (transaction_a),
-store (store_a),
-result (0)
-{
-}
-
-void chratos::representative_visitor::compute (chratos::block_hash const & hash_a)
-{
-	current = hash_a;
-	while (result.is_zero ())
-	{
-		auto block (store.block_get (transaction, current));
-		assert (block != nullptr);
-		block->visit (*this);
-	}
-}
-
-void chratos::representative_visitor::state_block (chratos::state_block const & block_a)
-{
-	result = block_a.hash ();
-}
-
-void chratos::representative_visitor::dividend_block (chratos::dividend_block const & block_a)
-{
-	current = block_a.hash ();
-}
-
-void chratos::representative_visitor::claim_block (chratos::claim_block const & block_a)
-{
-	current = block_a.hash ();
-}
-
 chratos::vote::vote (chratos::vote const & other_a) :
 sequence (other_a.sequence),
 blocks (other_a.blocks),
@@ -719,6 +570,7 @@ sequence (sequence_a),
 account (account_a)
 {
 	assert (blocks_a.size () > 0);
+	assert (blocks_a.size () <= 12);
 	for (auto hash : blocks_a)
 	{
 		blocks.push_back (hash);

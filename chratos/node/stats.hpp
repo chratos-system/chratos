@@ -3,11 +3,10 @@
 #include <atomic>
 #include <boost/circular_buffer.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <chratos/lib/utility.hpp>
 #include <chrono>
 #include <map>
 #include <memory>
-#include <mutex>
-#include <chratos/lib/utility.hpp>
 #include <string>
 #include <unordered_map>
 
@@ -27,31 +26,31 @@ public:
 	bool deserialize_json (boost::property_tree::ptree & tree_a);
 
 	/** If true, sampling of counters is enabled */
-	bool sampling_enabled{ false };
+	bool sampling_enabled { false };
 
 	/** How many sample intervals to keep in the ring buffer */
-	size_t capacity{ 0 };
+	size_t capacity { 0 };
 
 	/** Sample interval in milliseconds */
-	size_t interval{ 0 };
+	size_t interval { 0 };
 
 	/** How often to log sample array, in milliseconds. Default is 0 (no logging) */
-	size_t log_interval_samples{ 0 };
+	size_t log_interval_samples { 0 };
 
 	/** How often to log counters, in milliseconds. Default is 0 (no logging) */
-	size_t log_interval_counters{ 0 };
+	size_t log_interval_counters { 0 };
 
 	/** Maximum number of log outputs before rotating the file */
-	size_t log_rotation_count{ 100 };
+	size_t log_rotation_count { 100 };
 
 	/** If true, write headers on each counter or samples writeout. The header contains log type and the current wall time. */
-	bool log_headers{ true };
+	bool log_headers { true };
 
 	/** Filename for the counter log  */
-	std::string log_counters_filename{ "counters.stat" };
+	std::string log_counters_filename { "counters.stat" };
 
 	/** Filename for the sampling log */
-	std::string log_samples_filename{ "samples.stat" };
+	std::string log_samples_filename { "samples.stat" };
 };
 
 /** Value and wall time of measurement */
@@ -59,9 +58,9 @@ class stat_datapoint
 {
 public:
 	/** Value of the sample interval */
-	uint64_t value{ 0 };
+	uint64_t value { 0 };
 	/** When the sample was added. This is wall time (system_clock), suitable for display purposes. */
-	std::chrono::system_clock::time_point timestamp{ std::chrono::system_clock::now () };
+	std::chrono::system_clock::time_point timestamp { std::chrono::system_clock::now () };
 
 	/** Add \addend to the current value and optionally update the timestamp */
 	inline void add (uint64_t addend, bool update_timestamp = true)
@@ -87,7 +86,7 @@ public:
 	boost::circular_buffer<stat_datapoint> samples;
 
 	/** Start time of current sample interval. This is a steady clock for measuring interval; the datapoint contains the wall time. */
-	std::chrono::steady_clock::time_point sample_start_time{ std::chrono::steady_clock::now () };
+	std::chrono::steady_clock::time_point sample_start_time { std::chrono::steady_clock::now () };
 
 	/** Sample interval in milliseconds. If 0, sampling is disabled. */
 	size_t sample_interval;
@@ -162,7 +161,7 @@ public:
 
 protected:
 	std::string tm_to_string (tm & tm);
-	size_t log_entries{ 0 };
+	size_t log_entries { 0 };
 };
 
 /**
@@ -184,7 +183,9 @@ public:
 		rollback,
 		bootstrap,
 		vote,
-		peering
+		http_callback,
+		peering,
+		udp
 	};
 
 	/** Optional detail type */
@@ -195,6 +196,8 @@ public:
 		// error specific
 		bad_sender,
 		insufficient_work,
+		http_callback,
+		unreachable_host,
 
 		// ledger, block, bootstrap
 		send,
@@ -203,8 +206,8 @@ public:
 		change,
 		state_block,
 		epoch_block,
-    dividend_block,
-    claim_block,
+		dividend_block,
+		claim_block,
 
 		// message specific
 		keepalive,
@@ -214,18 +217,33 @@ public:
 		confirm_ack,
 		node_id_handshake,
 
-		// bootstrap specific
+		// bootstrap, callback
 		initiate,
+
+		// bootstrap specific
 		bulk_pull,
 		bulk_push,
 		bulk_pull_account,
-		bulk_pull_blocks,
 		frontier_req,
 
 		// vote specific
 		vote_valid,
 		vote_replay,
 		vote_invalid,
+
+		// udp
+		blocking,
+		overflow,
+		invalid_magic,
+		invalid_network,
+		invalid_header,
+		invalid_message_type,
+		invalid_keepalive_message,
+		invalid_publish_message,
+		invalid_confirm_req_message,
+		invalid_confirm_ack_message,
+		invalid_node_id_handshake_message,
+		outdated_version,
 
 		// peering
 		handshake,
@@ -409,8 +427,8 @@ private:
 
 	/** Stat entries are sorted by key to simplify processing of log output */
 	std::map<uint32_t, std::shared_ptr<chratos::stat_entry>> entries;
-	std::chrono::steady_clock::time_point log_last_count_writeout{ std::chrono::steady_clock::now () };
-	std::chrono::steady_clock::time_point log_last_sample_writeout{ std::chrono::steady_clock::now () };
+	std::chrono::steady_clock::time_point log_last_count_writeout { std::chrono::steady_clock::now () };
+	std::chrono::steady_clock::time_point log_last_sample_writeout { std::chrono::steady_clock::now () };
 
 	/** All access to stat is thread safe, including calls from observers on the same thread */
 	std::mutex stat_mutex;

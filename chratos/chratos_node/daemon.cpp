@@ -1,9 +1,10 @@
 #include <chratos/chratos_node/daemon.hpp>
+#include <chratos/lib/utility.hpp>
 
 #include <boost/property_tree/json_parser.hpp>
+#include <chratos/node/working.hpp>
 #include <fstream>
 #include <iostream>
-#include <chratos/node/working.hpp>
 
 chratos_daemon::daemon_config::daemon_config (boost::filesystem::path const & application_path_a) :
 rpc_enable (false),
@@ -95,12 +96,15 @@ bool chratos_daemon::daemon_config::upgrade_json (unsigned version_a, boost::pro
 
 void chratos_daemon::daemon::run (boost::filesystem::path const & data_path)
 {
+	boost::system::error_code error_chmod;
 	boost::filesystem::create_directories (data_path);
+	chratos::set_secure_perm_directory (data_path, error_chmod);
 	chratos_daemon::daemon_config config (data_path);
 	auto config_path ((data_path / "config.json"));
 	std::fstream config_file;
 	std::unique_ptr<chratos::thread_runner> runner;
 	auto error (chratos::fetch_object (config, config_path, config_file));
+	chratos::set_secure_perm_file (config_path, error_chmod);
 	if (!error)
 	{
 		config.node.logging.init (data_path);
@@ -110,7 +114,7 @@ void chratos_daemon::daemon::run (boost::filesystem::path const & data_path)
 		chratos::work_pool opencl_work (config.node.work_threads, opencl ? [&opencl](chratos::uint256_union const & root_a) {
 			return opencl->generate_work (root_a);
 		}
-		                                                             : std::function<boost::optional<uint64_t> (chratos::uint256_union const &)> (nullptr));
+		                                                                 : std::function<boost::optional<uint64_t> (chratos::uint256_union const &)> (nullptr));
 		chratos::alarm alarm (service);
 		chratos::node_init init;
 		try

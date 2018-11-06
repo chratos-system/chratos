@@ -32,6 +32,7 @@ void chratos::add_node_options (boost::program_options::options_description & de
 	("unchecked_clear", "Clear unchecked blocks")
 	("data_path", boost::program_options::value<std::string> (), "Use the supplied path as the data directory")
 	("delete_node_id", "Delete the node ID in the database")
+	("clear_send_ids", "Remove all send IDs from the database (dangerous: not intended for production use)")
 	("diagnostics", "Run internal diagnostics")
 	("key_create", "Generates a adhoc random keypair and prints it to stdout")
 	("key_expand", "Derive public key and account number from <key>")
@@ -75,9 +76,9 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 				auto wallet (node.node->wallets.open (wallet_id));
 				if (wallet != nullptr)
 				{
-					if (!wallet->enter_password (password))
+					auto transaction (wallet->wallets.tx_begin_write ());
+					if (!wallet->enter_password (transaction, password))
 					{
-						chratos::transaction transaction (wallet->store.environment, nullptr, true);
 						auto pub (wallet->store.deterministic_insert (transaction));
 						std::cout << boost::str (boost::format ("Account: %1%\n") % pub.to_account ());
 					}
@@ -151,13 +152,18 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 				inactive_node node (data_path);
 				if (vm.count ("unchecked_clear"))
 				{
-					chratos::transaction transaction (node.node->store.environment, nullptr, true);
+					auto transaction (node.node->store.tx_begin_write ());
 					node.node->store.unchecked_clear (transaction);
 				}
 				if (vm.count ("delete_node_id"))
 				{
-					chratos::transaction transaction (node.node->store.environment, nullptr, true);
+					auto transaction (node.node->store.tx_begin_write ());
 					node.node->store.delete_node_id (transaction);
+				}
+				if (vm.count ("clear_send_ids"))
+				{
+					auto transaction (node.node->store.tx_begin_write ());
+					node.node->wallets.clear_send_ids (transaction);
 				}
 				success = node.node->copy_with_compaction (vacuum_path);
 			}
@@ -171,6 +177,10 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 				boost::filesystem::rename (vacuum_path, source_path);
 				std::cout << "Vacuum completed" << std::endl;
 			}
+			else
+			{
+				std::cerr << "Vacuum failed (copy_with_compaction returned false)" << std::endl;
+			}
 		}
 		catch (const boost::filesystem::filesystem_error & ex)
 		{
@@ -178,7 +188,7 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 		}
 		catch (...)
 		{
-			std::cerr << "Vacuum failed" << std::endl;
+			std::cerr << "Vacuum failed (unknown reason)" << std::endl;
 		}
 	}
 	else if (vm.count ("snapshot"))
@@ -198,19 +208,28 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 				inactive_node node (data_path);
 				if (vm.count ("unchecked_clear"))
 				{
-					chratos::transaction transaction (node.node->store.environment, nullptr, true);
+					auto transaction (node.node->store.tx_begin_write ());
 					node.node->store.unchecked_clear (transaction);
 				}
 				if (vm.count ("delete_node_id"))
 				{
-					chratos::transaction transaction (node.node->store.environment, nullptr, true);
+					auto transaction (node.node->store.tx_begin_write ());
 					node.node->store.delete_node_id (transaction);
+				}
+				if (vm.count ("clear_send_ids"))
+				{
+					auto transaction (node.node->store.tx_begin_write ());
+					node.node->wallets.clear_send_ids (transaction);
 				}
 				success = node.node->copy_with_compaction (snapshot_path);
 			}
 			if (success)
 			{
 				std::cout << "Snapshot completed, This can be found at " << snapshot_path << std::endl;
+			}
+			else
+			{
+				std::cerr << "Snapshot Failed (copy_with_compaction returned false)" << std::endl;
 			}
 		}
 		catch (const boost::filesystem::filesystem_error & ex)
@@ -219,14 +238,14 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 		}
 		catch (...)
 		{
-			std::cerr << "Snapshot Failed" << std::endl;
+			std::cerr << "Snapshot Failed (unknown reason)" << std::endl;
 		}
 	}
 	else if (vm.count ("unchecked_clear"))
 	{
 		boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : chratos::working_path ();
 		inactive_node node (data_path);
-		chratos::transaction transaction (node.node->store.environment, nullptr, true);
+		auto transaction (node.node->store.tx_begin_write ());
 		node.node->store.unchecked_clear (transaction);
 		std::cerr << "Unchecked blocks deleted" << std::endl;
 	}
@@ -234,9 +253,17 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 	{
 		boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : chratos::working_path ();
 		inactive_node node (data_path);
-		chratos::transaction transaction (node.node->store.environment, nullptr, true);
+		auto transaction (node.node->store.tx_begin_write ());
 		node.node->store.delete_node_id (transaction);
 		std::cerr << "Deleted Node ID" << std::endl;
+	}
+	else if (vm.count ("clear_send_ids"))
+	{
+		boost::filesystem::path data_path = vm.count ("data_path") ? boost::filesystem::path (vm["data_path"].as<std::string> ()) : chratos::working_path ();
+		inactive_node node (data_path);
+		auto transaction (node.node->store.tx_begin_write ());
+		node.node->wallets.clear_send_ids (transaction);
+		std::cerr << "Send IDs deleted" << std::endl;
 	}
 	else if (vm.count ("diagnostics"))
 	{
@@ -306,12 +333,12 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 				auto wallet (node.node->wallets.open (wallet_id));
 				if (wallet != nullptr)
 				{
-					if (!wallet->enter_password (password))
+					auto transaction (wallet->wallets.tx_begin_write ());
+					if (!wallet->enter_password (transaction, password))
 					{
 						chratos::raw_key key;
 						if (!key.data.decode_hex (vm["key"].as<std::string> ()))
 						{
-							chratos::transaction transaction (wallet->store.environment, nullptr, true);
 							wallet->store.insert_adhoc (transaction, key);
 						}
 						else
@@ -360,12 +387,12 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 				auto wallet (node.node->wallets.open (wallet_id));
 				if (wallet != nullptr)
 				{
-					if (!wallet->enter_password (password))
+					auto transaction (wallet->wallets.tx_begin_write ());
+					if (!wallet->enter_password (transaction, password))
 					{
 						chratos::raw_key key;
 						if (!key.data.decode_hex (vm["key"].as<std::string> ()))
 						{
-							chratos::transaction transaction (wallet->store.environment, nullptr, true);
 							wallet->change_seed (transaction, key);
 						}
 						else
@@ -421,9 +448,9 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 				auto existing (node.node->wallets.items.find (wallet_id));
 				if (existing != node.node->wallets.items.end ())
 				{
-					if (!existing->second->enter_password (password))
+					auto transaction (existing->second->wallets.tx_begin_write ());
+					if (!existing->second->enter_password (transaction, password))
 					{
-						chratos::transaction transaction (existing->second->store.environment, nullptr, false);
 						chratos::raw_key seed;
 						existing->second->store.seed (seed, transaction);
 						std::cout << boost::str (boost::format ("Seed: %1%\n") % seed.data.to_string ());
@@ -434,6 +461,10 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 							auto error (existing->second->store.fetch (transaction, account, key));
 							assert (!error);
 							std::cout << boost::str (boost::format ("Pub: %1% Prv: %2%\n") % account.to_account () % key.data.to_string ());
+							if (chratos::pub_key (key.data) != account)
+							{
+								std::cerr << boost::str (boost::format ("Invalid private key %1%\n") % key.data.to_string ());
+							}
 						}
 					}
 					else
@@ -557,7 +588,7 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 		for (auto i (node.node->wallets.items.begin ()), n (node.node->wallets.items.end ()); i != n; ++i)
 		{
 			std::cout << boost::str (boost::format ("Wallet ID: %1%\n") % i->first.to_string ());
-			chratos::transaction transaction (i->second->store.environment, nullptr, false);
+			auto transaction (i->second->wallets.tx_begin_read ());
 			for (auto j (i->second->store.begin (transaction)), m (i->second->store.end ()); j != m; ++j)
 			{
 				std::cout << chratos::uint256_union (j->first).to_account () << '\n';
@@ -578,7 +609,7 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 					chratos::account account_id;
 					if (!account_id.decode_account (vm["account"].as<std::string> ()))
 					{
-						chratos::transaction transaction (wallet->second->store.environment, nullptr, true);
+						auto transaction (wallet->second->wallets.tx_begin_write ());
 						auto account (wallet->second->store.find (transaction, account_id));
 						if (account != wallet->second->store.end ())
 						{
@@ -625,7 +656,7 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 				auto wallet (node.node->wallets.items.find (wallet_id));
 				if (wallet != node.node->wallets.items.end ())
 				{
-					chratos::transaction transaction (wallet->second->store.environment, nullptr, false);
+					auto transaction (wallet->second->wallets.tx_begin_read ());
 					auto representative (wallet->second->store.representative (transaction));
 					std::cout << boost::str (boost::format ("Representative: %1%\n") % representative.to_account ());
 				}
@@ -663,7 +694,7 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 						auto wallet (node.node->wallets.items.find (wallet_id));
 						if (wallet != node.node->wallets.items.end ())
 						{
-							chratos::transaction transaction (wallet->second->store.environment, nullptr, true);
+							auto transaction (wallet->second->wallets.tx_begin_write ());
 							wallet->second->store.representative_set (transaction, account);
 						}
 						else
@@ -699,7 +730,7 @@ std::error_code chratos::handle_node_options (boost::program_options::variables_
 	else if (vm.count ("vote_dump") == 1)
 	{
 		inactive_node node (data_path);
-		chratos::transaction transaction (node.node->store.environment, nullptr, false);
+		auto transaction (node.node->store.tx_begin_read ());
 		for (auto i (node.node->store.vote_begin (transaction)), n (node.node->store.vote_end ()); i != n; ++i)
 		{
 			auto vote (i->second);

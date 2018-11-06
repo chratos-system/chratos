@@ -1,8 +1,8 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <cstdlib>
 #include <chratos/node/common.hpp>
 #include <chratos/node/testing.hpp>
+#include <cstdlib>
 
 std::string chratos::error_system_messages::message (int ev) const
 {
@@ -87,7 +87,7 @@ std::shared_ptr<chratos::wallet> chratos::system::wallet (size_t index_a)
 	return nodes[index_a]->wallets.items.begin ()->second;
 }
 
-chratos::account chratos::system::account (MDB_txn * transaction_a, size_t index_a)
+chratos::account chratos::system::account (chratos::transaction const & transaction_a, size_t index_a)
 {
 	auto wallet_l (wallet (index_a));
 	auto keys (wallet_l->store.begin (transaction_a));
@@ -97,22 +97,20 @@ chratos::account chratos::system::account (MDB_txn * transaction_a, size_t index
 	return chratos::account (result);
 }
 
-void chratos::system::deadline_set (const std::chrono::duration<double, std::nano> & delta_a)
+void chratos::system::deadline_set (std::chrono::duration<double, std::nano> const & delta_a)
 {
 	deadline = std::chrono::steady_clock::now () + delta_a * deadline_scaling_factor;
 }
 
-std::error_code chratos::system::poll (const std::chrono::nanoseconds & sleep_time)
+std::error_code chratos::system::poll (std::chrono::nanoseconds const & wait_time)
 {
 	std::error_code ec;
-	if (service.poll_one () == 0)
-	{
-		std::this_thread::sleep_for (sleep_time);
-	}
+	service.run_one_for (wait_time);
 
 	if (std::chrono::steady_clock::now () > deadline)
 	{
 		ec = chratos::error_system::deadline_expired;
+		stop ();
 	}
 	return ec;
 }
@@ -166,7 +164,7 @@ void chratos::system::generate_usage_traffic (uint32_t count_a, uint32_t wait_a,
 
 void chratos::system::generate_rollback (chratos::node & node_a, std::vector<chratos::account> & accounts_a)
 {
-	chratos::transaction transaction (node_a.store.environment, nullptr, true);
+	auto transaction (node_a.store.tx_begin_write ());
 	auto index (random_pool.GenerateWord32 (0, accounts_a.size () - 1));
 	auto account (accounts_a[index]);
 	chratos::account_info info;
@@ -188,14 +186,13 @@ void chratos::system::generate_receive (chratos::node & node_a)
 {
 	std::shared_ptr<chratos::block> send_block;
 	{
-		chratos::transaction transaction (node_a.store.environment, nullptr, false);
+		auto transaction (node_a.store.tx_begin_read ());
 		chratos::uint256_union random_block;
 		random_pool.GenerateBlock (random_block.bytes.data (), sizeof (random_block.bytes));
 		auto i (node_a.store.pending_begin (transaction, chratos::pending_key (random_block, 0)));
 		if (i != node_a.store.pending_end ())
 		{
 			chratos::pending_key send_hash (i->first);
-			chratos::pending_info info (i->second);
 			send_block = node_a.store.block_get (transaction, send_hash.hash);
 		}
 	}
@@ -242,13 +239,13 @@ chratos::account chratos::system::get_random_account (std::vector<chratos::accou
 	return result;
 }
 
-chratos::uint128_t chratos::system::get_random_amount (MDB_txn * transaction_a, chratos::node & node_a, chratos::account const & account_a)
+chratos::uint128_t chratos::system::get_random_amount (chratos::transaction const & transaction_a, chratos::node & node_a, chratos::account const & account_a)
 {
 	chratos::uint128_t balance (node_a.ledger.account_balance (transaction_a, account_a));
 	std::string balance_text (balance.convert_to<std::string> ());
 	chratos::uint128_union random_amount;
 	random_pool.GenerateBlock (random_amount.bytes.data (), sizeof (random_amount.bytes));
-	auto result (((chratos::uint256_t{ random_amount.number () } * balance) / chratos::uint256_t{ std::numeric_limits<chratos::uint128_t>::max () }).convert_to<chratos::uint128_t> ());
+	auto result (((chratos::uint256_t { random_amount.number () } * balance) / chratos::uint256_t { std::numeric_limits<chratos::uint128_t>::max () }).convert_to<chratos::uint128_t> ());
 	std::string text (result.convert_to<std::string> ());
 	return result;
 }
@@ -261,7 +258,7 @@ void chratos::system::generate_send_existing (chratos::node & node_a, std::vecto
 	{
 		chratos::account account;
 		random_pool.GenerateBlock (account.bytes.data (), sizeof (account.bytes));
-		chratos::transaction transaction (node_a.store.environment, nullptr, false);
+		auto transaction (node_a.store.tx_begin_read ());
 		chratos::store_iterator<chratos::account, chratos::account_info> entry (node_a.store.latest_begin (transaction, account));
 		if (entry == node_a.store.latest_end ())
 		{
@@ -308,7 +305,7 @@ void chratos::system::generate_send_new (chratos::node & node_a, std::vector<chr
 	chratos::uint128_t amount;
 	chratos::account source;
 	{
-		chratos::transaction transaction (node_a.store.environment, nullptr, false);
+		auto transaction (node_a.store.tx_begin_read ());
 		source = get_random_account (accounts_a);
 		amount = get_random_amount (transaction, node_a, source);
 	}
@@ -336,7 +333,7 @@ void chratos::system::generate_mass_activity (uint32_t count_a, chratos::node & 
 			uint64_t count (0);
 			uint64_t state (0);
 			{
-				chratos::transaction transaction (node_a.store.environment, nullptr, false);
+				auto transaction (node_a.store.tx_begin_read ());
 				auto block_counts (node_a.store.block_count (transaction));
 				count = block_counts.sum ();
 				state = block_counts.state_v0 + block_counts.state_v1;
