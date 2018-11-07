@@ -4468,7 +4468,7 @@ void chratos::rpc_handler::process_request ()
 			{
 				// Processed before logging
 			}
-			else if (action == "password_enter")
+			if (action == "password_enter")
 			{
 				// Processed before logging
 			}
